@@ -1,0 +1,22 @@
+# Python environment files
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Jupyter/Notebook files
+.ipynb_checkpoints
+
+# ML Model/Data Files (CRITICAL to avoid huge repository size)
+# Your trained models and vector files:
+*.pkl
+*.npy
+*.joblib
+sbert_model_deep_finetuned/
+
+# Data Files (Keep large data off Git, assume they are downloadable from Kaggle)
+*.csv
