@@ -1,4 +1,4 @@
-# CODE 35.0: FINAL PROJECT FILE (Stable Multi-Lingual Core & Visualization Fix)
+# CODE 41.0: FINAL PROJECT FILE (Multilingual Stable Retrieval Core - FLAN-T5 Generator Removed)
 
 import pandas as pd
 import numpy as np
@@ -39,9 +39,11 @@ try:
     triage_thresholds = joblib.load('triage_thresholds.pkl')
     disease_description_map = joblib.load('disease_description_map.pkl')
     
-    # 1c. FAQ & Multilingual Components
+    # 1c. FAQ & Multilingual Components (Removing Flan-T5 reliance)
     FAQ_EMBEDDINGS = np.load('faq_embeddings.npy')
     df_faq = pd.read_csv('faq_knowledge_base.csv')
+    
+    # NOTE: The translator model is sufficient for the final stable design.
     TRANSLATOR_MODEL = joblib.load('multilingual_translator.pkl').to(DEVICE)
     TRANSLATOR_TOKENIZER = joblib.load('multilingual_tokenizer.pkl')
 
@@ -54,7 +56,6 @@ try:
 
 except FileNotFoundError as e:
     print(f"\nFATAL ERROR: One or more required files are missing. Details: {e}")
-    print("Please ensure all setup scripts ran successfully.")
     exit()
 
 print("All components loaded. Starting Chatbot.")
@@ -64,21 +65,15 @@ print("All components loaded. Starting Chatbot.")
 # ----------------------------------------------------------------------
 
 def detect_language(text):
-    """Simple check for non-English characters to approximate language detection (Hi/Ta/En)."""
-    if re.search(r'[\u0900-\u097F]', text): # Devanagari (Hindi) range
-        return LANG_HINDI_CODE
-    if re.search(r'[\u0B80-\u0BFF]', text): # Tamil range
-        return LANG_TAMIL_CODE
+    if re.search(r'[\u0900-\u097F]', text): return LANG_HINDI_CODE
+    if re.search(r'[\u0B80-\u0BFF]', text): return LANG_TAMIL_CODE
     return LANG_ENGLISH_CODE
 
 def translate_text(text, src_lang, tgt_lang):
-    """Translates text between specified languages using the loaded mBART model."""
-    if src_lang == tgt_lang:
-        return text
+    if src_lang == tgt_lang: return text
     
     TRANSLATOR_TOKENIZER.src_lang = src_lang
     
-    # Encode input, explicitly setting max_length to suppress warning
     encoded_input = TRANSLATOR_TOKENIZER(text, return_tensors="pt", padding=True, truncation=True, max_length=150).to(DEVICE)
     
     generated_tokens = TRANSLATOR_MODEL.generate(
@@ -88,24 +83,48 @@ def translate_text(text, src_lang, tgt_lang):
     )
     return TRANSLATOR_TOKENIZER.batch_decode(generated_tokens, skip_special_tokens=True)[0]
 
-# **GENERATIVE RAG FUNCTION IS SKIPPED FOR STABILITY, ONLY STATIC RETRIEVAL USED**
-
-# ----------------------------------------------------------------------
-# --- CORE FEATURE FUNCTIONS ---
-# ----------------------------------------------------------------------
-
-# 3. Triage Scoring Function
-def calculate_triage_score(symptoms_text: str, weight_map: dict) -> tuple:
+# --- STATIC RAG Function (The only stable form) ---
+def retrieve_faq_answer(user_input: str, model, embeddings, df_kb, context_disease=None, threshold=0.7):
     
+    modified_query = user_input
+    
+    # 1. Contextual Substitution (its/this)
+    if context_disease and ('its' in user_input.lower() or 'this' in user_input.lower()):
+        modified_query = user_input.lower().replace('its', context_disease).replace('this', context_disease)
+
+    # 2. CRITICAL FIX: Force the query to a common "What are the precautions for X?" structure.
+    action_keywords = ['exercise', 'precautions', 'treatment', 'good for', 'avoid', 'what should i do']
+    
+    if context_disease and any(k in user_input.lower() for k in action_keywords):
+        modified_query = f"what are the precautions for {context_disease}"
+
+    cleaned_query = clean_text(modified_query)
+    query_embedding = model.encode([cleaned_query])
+    
+    similarities = cosine_similarity(query_embedding, embeddings)[0]
+    best_match_index = np.argmax(similarities)
+    best_score = similarities[best_match_index]
+    
+    if best_score >= threshold:
+        match_question = df_kb.iloc[best_match_index]['question']
+        match_answer = df_kb.iloc[best_match_index]['answer']
+        return match_question, match_answer, best_score
+    else:
+        return None, None, best_score
+
+
+# ----------------------------------------------------------------------
+# --- CORE FEATURE FUNCTIONS (Abbreviated) ---
+# ----------------------------------------------------------------------
+
+def calculate_triage_score(symptoms_text: str, weight_map: dict) -> tuple:
+    # Triage Logic (Final Fixed Version)
     recognized_symptoms_raw = []
     search_string = symptoms_text.lower().replace(' ', '_')
-    
     recognized_keys = set()
     symptom_details = {} 
-    
     for symptom_phrase, weight in weight_map.items():
         if symptom_phrase in search_string:
-            
             if symptom_phrase not in recognized_keys:
                 symptom_details[symptom_phrase] = weight
                 recognized_keys.add(symptom_phrase)
@@ -115,9 +134,7 @@ def calculate_triage_score(symptoms_text: str, weight_map: dict) -> tuple:
     official_weights_used = {} 
 
     for key, weight in symptom_details.items():
-        if weight == 7 and 7 in official_weights_used:
-             continue
-        
+        if weight == 7 and 7 in official_weights_used: continue
         final_score += weight
         official_weights_used[weight] = key 
         final_recognized_list.append(f"{key} (Weight: {weight})")
@@ -135,7 +152,6 @@ def calculate_triage_score(symptoms_text: str, weight_map: dict) -> tuple:
     return final_score, triage_level, triage_advice, final_recognized_list
 
 
-# 4. Causal Scoreboard Function
 def explain_prediction_scoreboard(top_3_predictions, recognized_symptoms_list):
     
     print("\n--- QUANTITATIVE EXPLANATION (SCOREBOARD) ---")
@@ -164,7 +180,6 @@ def explain_prediction_scoreboard(top_3_predictions, recognized_symptoms_list):
             print(f"  - {symptom.replace('_', ' ').title(): <20}: Weight: {weight} ({weight_percent:.1f}% contribution to score)")
 
 
-# 5. Multi-Graph Causal Visualization Function (FIXED ARGUMENT)
 def visualize_multi_causal_links(top_3_predictions, recognized_symptoms_list):
     
     symptom_names = [s.split('(')[0].strip() for s in recognized_symptoms_list if s]
@@ -203,29 +218,6 @@ def visualize_multi_causal_links(top_3_predictions, recognized_symptoms_list):
     plt.pause(0.1) 
     print("\nMulti-Graph Window initiated. Check your taskbar/desktop.")
 
-
-# 6. FAQ Retrieval Function (Contextualized)
-def retrieve_faq_answer(user_input: str, model, embeddings, df_kb, context_disease=None, threshold=0.7):
-    
-    modified_query = user_input
-    
-    if context_disease and ('its' in user_input.lower() or 'this' in user_input.lower()):
-        modified_query = user_input.lower().replace('its', context_disease).replace('this', context_disease)
-
-    cleaned_query = clean_text(modified_query)
-    query_embedding = model.encode([cleaned_query])
-    
-    similarities = cosine_similarity(query_embedding, embeddings)[0]
-    best_match_index = np.argmax(similarities)
-    best_score = similarities[best_match_index]
-    
-    if best_score >= threshold:
-        match_question = df_kb.iloc[best_match_index]['question']
-        match_answer = df_kb.iloc[best_match_index]['answer']
-        return match_question, match_answer, best_score
-    else:
-        return None, None, best_score
-
 # ----------------------------------------------------------------------
 # --- 7. MAIN CHATBOT LOOP (Multilingual & Generative RAG Disabled) ---
 # ----------------------------------------------------------------------
@@ -254,7 +246,7 @@ def run_chatbot(model, vectorizer, encoder, description_map):
         else:
             user_input_en = user_input
             
-        # --- PHASE 1: ATTEMPT CONTEXTUAL FAQ RETRIEVAL ---
+        # --- PHASE 1: ATTEMPT CONTEXTUAL FAQ RETRIEVAL (STATIC) ---
         context_disease_name = CHAT_MEMORY['last_disease'] if CHAT_MEMORY['last_disease'] else None
 
         match_q, match_a, score = retrieve_faq_answer(
@@ -286,7 +278,6 @@ def run_chatbot(model, vectorizer, encoder, description_map):
         input_vector = vectorizer_model.encode([cleaned_input]).astype(np.float64) 
         probabilities = model.predict_proba(input_vector)[0]
         
-        # Get Top 3 Predictions
         top_k_indices = np.argsort(probabilities)[::-1][:3]
         top_3_predictions = []
         for i in top_k_indices:
@@ -302,7 +293,6 @@ def run_chatbot(model, vectorizer, encoder, description_map):
         
         # 3. TRANSLATE OUTPUTS
         if src_lang_code != LANG_ENGLISH_CODE:
-            # Translate only the primary prediction name for display
             primary_disease_output = translate_text(primary_disease, LANG_ENGLISH_CODE, src_lang_code)
             triage_advice_output = translate_text(triage_advice_en, LANG_ENGLISH_CODE, src_lang_code)
         else:
