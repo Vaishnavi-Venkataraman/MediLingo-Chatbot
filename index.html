@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediLingo Chatbot</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        
+        :root {
+            --primary: #1e88e5;
+            --primary-dark: #1565c0;
+            --bg-light: #f7f9fc;
+            --text-dark: #1a202c;
+            --risk-high: #d32f2f;
+            --risk-moderate: #ffa000;
+            --risk-low: #388e3c;
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background-color: var(--bg-light); 
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 30px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+        }
+        h1 { 
+            color: var(--primary); 
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        #chat-interface {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 25px;
+        }
+        input[type="text"] { 
+            width: calc(100% - 110px); 
+            padding: 12px 15px; 
+            border: 1px solid #ccc; 
+            border-radius: 8px; 
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        button { 
+            background-color: var(--primary); 
+            color: white; 
+            padding: 12px 20px; 
+            border: none; 
+            border-radius: 8px; 
+            font-weight: 600;
+            cursor: pointer; 
+            transition: background-color 0.3s;
+            margin-left: 10px;
+        }
+        button:hover { 
+            background-color: var(--primary-dark); 
+        }
+
+        /* RESPONSE CARD STYLES */
+        .response-card {
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-top: 20px;
+        }
+        .response-card-header {
+            padding: 15px 20px;
+            font-weight: 600;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .response-card-body {
+            padding: 20px;
+            background: #fff;
+            border: 1px solid #eee;
+            border-top: none;
+        }
+        
+        /* RISK STYLES */
+        .risk-high-bg { background-color: var(--risk-high); }
+        .risk-moderate-bg { background-color: var(--risk-moderate); }
+        .risk-low-bg { background-color: var(--risk-low); }
+
+        /* LIST/DETAIL STYLES */
+        .details-section h3 {
+            font-size: 1.1em;
+            color: var(--primary);
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            margin-top: 15px;
+        }
+        .details-section strong {
+            display: inline-block;
+            margin-right: 5px;
+            min-width: 120px;
+        }
+        .confidence-bar {
+            height: 10px;
+            background-color: var(--bg-light);
+            border-radius: 5px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        .confidence-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.5s ease;
+        }
+        .prediction-list p {
+            margin: 5px 0;
+            padding: 5px 0;
+            border-bottom: 1px dotted #f0f0f0;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MediLingo Multilingual Chatbot</h1>
+        <p>Status: Backend API running at <a href="http://127.0.0.1:8000/docs" target="_blank">http://127.0.0.1:8000</a> (CORS Enabled)</p>
+
+        <div id="chat-interface">
+            <label for="query">Enter Symptoms or Query (English, Hindi, or Tamil):</label>
+            <div style="display: flex;">
+                <input type="text" id="query" placeholder="e.g., मुझे बुखार और सिरदर्द है" style="width: 98%; padding: 8px; margin-top: 5px;">
+                <button onclick="sendQuery()">Analyze</button>
+            </div>
+        </div>
+
+        <h2>Analysis Result</h2>
+        <div id="output">Enter a query to get started.</div>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:8000/chat';
+
+        async function sendQuery() {
+            const query = document.getElementById('query').value;
+            const outputDiv = document.getElementById('output');
+            outputDiv.innerHTML = '<p style="color: var(--primary);">Processing request on FastAPI server...</p>';
+            outputDiv.className = '';
+
+            // --- Client-side Validation to Prevent Status 422 ---
+            if (query.trim() === "") {
+                outputDiv.innerHTML = '<p style="color: var(--risk-high);">Error: Please enter a non-empty query.</p>';
+                return;
+            }
+
+            // CRITICAL FIX: context_disease is always a string, as required by FastAPI/Pydantic.
+            const contextDiseaseValue = ""; 
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        query: query, 
+                        context_disease: contextDiseaseValue 
+                    }), 
+                });
+
+                if (!response.ok) {
+                    const errorDetails = await response.text();
+                    outputDiv.innerHTML = `<p style="color: var(--risk-high);">API Error: Status ${response.status}</p><p>${errorDetails.substring(0, 200)}...</p>`;
+                    return;
+                }
+
+                const data = await response.json();
+                
+                let outputText = `<p>Query Sent: **${query}**</p>`;
+                
+                // Determine Risk Class and Color
+                let riskClass = 'risk-low-bg';
+                if (data.triage_level.includes('HIGH')) { riskClass = 'risk-high-bg'; } 
+                else if (data.triage_level.includes('MODERATE')) { riskClass = 'risk-moderate-bg'; }
+                
+                // Render Output
+                outputDiv.innerHTML = renderOutputCard(data, riskClass);
+
+            } catch (error) {
+                outputDiv.innerHTML = `<p style="color: var(--risk-high);">Network Error: Could not process request.</p><p>Is the Uvicorn server running? Details: ${error.message}</p>`;
+            }
+        }
+
+        function renderOutputCard(data, riskClass) {
+            const primary = data.top_3_predictions[0];
+            const primaryConfidence = (primary.confidence * 100).toFixed(1);
+            const primaryLang = data.primary_disease.includes('(hi)') ? 'Hindi' : 'English';
+
+
+            let top3Html = data.top_3_predictions.map((p, index) => {
+                const conf = (p.confidence * 100).toFixed(1);
+                const barWidth = Math.max(10, conf) + '%';
+                const barColor = index === 0 ? 'var(--primary-dark)' : '#ccc';
+                
+                return `
+                    <div class="prediction-list">
+                        <p><strong>${index + 1}. ${p.disease}</strong> (${conf}%)</p>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${barWidth}; background-color: ${barColor};"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            let actionText = 'Monitor symptoms and consider self-care.';
+            if (data.triage_level.includes('HIGH')) {
+                actionText = 'SEEK IMMEDIATE MEDICAL ATTENTION';
+            } else if (data.triage_level.includes('MODERATE')) {
+                actionText = 'Consult a doctor within 24-48 hours.';
+            }
+
+            return `
+                <div class="response-card">
+                    <div class="response-card-header ${riskClass}">
+                        <span>Triage Status: ${data.triage_level.replace('_', ' ')}</span>
+                        <span>Confidence: ${primaryConfidence}%</span>
+                    </div>
+
+                    <div class="response-card-body">
+                        
+                        <div class="details-section">
+                            <h3>Primary Prediction (${primaryLang})</h3>
+                            <p><strong>Disease:</strong> ${data.primary_disease}</p>
+                            <p><strong>Action:</strong> <span style="color: ${riskClass.includes('high') ? 'var(--risk-high)' : 'var(--text-dark)'};">${actionText}</span></p>
+                        </div>
+                        
+                        <div class="details-section">
+                            <h3>Top Alternatives</h3>
+                            ${top3Html}
+                        </div>
+
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

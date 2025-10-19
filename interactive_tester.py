@@ -1,5 +1,4 @@
-# CODE 41.0: FINAL PROJECT FILE (Multilingual Stable Retrieval Core - FLAN-T5 Generator Removed)
-
+import sys 
 import pandas as pd
 import numpy as np
 import joblib
@@ -334,6 +333,5 @@ def run_chatbot(model, vectorizer, encoder, description_map):
 
         print("=============================================")
 
-# --- 7. Start the Chatbot ---
 if __name__ == '__main__':
-    run_chatbot(svm_semantic_model, vectorizer_model, le, disease_description_map)
+        run_chatbot(svm_semantic_model, vectorizer_model, le, disease_description_map)
