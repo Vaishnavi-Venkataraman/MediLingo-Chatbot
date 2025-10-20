@@ -1,4 +1,4 @@
-# CODE 53.0: FastAPI Backend (FINAL STABLE VERSION - GRAPH REMOVED)
+# CODE 55.0: FastAPI Backend (FINAL: Returning Actual FAQ Answer)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -50,7 +50,7 @@ LANG_MAP = {'en': LANG_ENGLISH_CODE, 'hi': LANG_HINDI_CODE, 'ta': LANG_TAMIL_COD
             LANG_ENGLISH_CODE: 'en', LANG_HINDI_CODE: 'hi', LANG_TAMIL_CODE: 'ta'}
 
 
-# --- Utility Functions ---
+# --- Utility Functions (Full Logic) ---
 def clean_text(text):
     text = text.lower()
     text = re.sub(r'[^a-z\s]', '', text) 
@@ -108,6 +108,29 @@ def calculate_triage_score_and_tokens(symptoms_text_en: str):
     
     return final_score, level, final_recognized_tokens
 
+def retrieve_faq_answer(user_input_en: str, model, embeddings, df_kb, context_disease=None, threshold=0.7):
+    # FULL STATIC RETRIEVAL LOGIC
+    modified_query = user_input_en
+    
+    action_keywords = ['exercise', 'precautions', 'treatment', 'good for', 'avoid', 'what should i do', 'what do i do', 'its', 'this']
+    
+    if context_disease and any(k in user_input_en.lower() for k in action_keywords):
+        modified_query = f"what are the precautions for {context_disease}"
+
+    cleaned_query = clean_text(modified_query)
+    query_embedding = model.encode([cleaned_query])
+    
+    similarities = cosine_similarity(query_embedding, embeddings)[0]
+    best_match_index = np.argmax(similarities)
+    best_score = similarities[best_match_index]
+    
+    if best_score >= threshold:
+        match_question = df_kb.iloc[best_match_index]['question']
+        match_answer = df_kb.iloc[best_match_index]['answer']
+        return match_question, match_answer, best_score
+    else:
+        return None, None, best_score
+
 
 # --- API Data Schemas ---
 class ChatInput(BaseModel):
@@ -133,15 +156,22 @@ def chat_endpoint(data: ChatInput):
     else:
         user_input_en = user_input
         
-    # --- PHASE 1: FAQ RETRIEVAL CHECK (Simplified) ---
-    if 'precautions' in user_input.lower() or 'treatment' in user_input.lower() or 'exercise' in user_input.lower():
-         return PredictionOutput(
-             primary_disease="FAQ_TRIGGERED",
-             primary_confidence=1.0,
-             triage_level="INFO_REQUEST",
-             top_3_predictions=[],
-             is_faq=True
-         )
+    # --- PHASE 1: FAQ RETRIEVAL CHECK (FULL LOGIC) ---
+    match_q, match_a, score = retrieve_faq_answer(user_input_en, SBERT_MODEL, FAQ_EMBEDDINGS, DF_FAQ)
+    
+    if match_a and score > 0.7:
+        
+        # Translate the answer back to the source language
+        match_a_output = translate_text(match_a, LANG_ENGLISH_CODE, src_lang_code)
+
+        # CRITICAL FIX: Return the actual answer in the primary_disease field
+        return PredictionOutput(
+            primary_disease=f"Answer: {match_a_output}", 
+            primary_confidence=score,
+            triage_level="INFO_REQUEST",
+            top_3_predictions=[],
+            is_faq=True
+        )
     
     # --- PHASE 2: SYMPTOM CHECKER FALLBACK ---
     
@@ -162,7 +192,7 @@ def chat_endpoint(data: ChatInput):
     primary_disease = top_3[0]['disease']
     primary_confidence = top_3[0]['confidence']
     
-    # Get Triage (using the correct fixed logic)
+    # Get Triage
     triage_score, triage_level, recognized_symptoms = calculate_triage_score_and_tokens(user_input_en)
     
     # Final Output: Translate primary disease for output
