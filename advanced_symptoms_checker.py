@@ -1,4 +1,4 @@
-# CODE 4.1-4.3 (Unified): Semantic SVM Symptoms Checker (Robust English Model)
+# CODE 45.0: Advanced Symptom Checker - DEBUGGED DATA SAVING
 
 import pandas as pd
 import numpy as np
@@ -6,12 +6,10 @@ import re
 import joblib
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
-from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, classification_report
-# Ensure this dependency is installed: pip install sentence-transformers
 from sentence_transformers import SentenceTransformer 
+import os # NEW IMPORT for file check
 
-# --- 1. Data Preparation, Cleaning, and Setup (Code 4.1) ---
+# --- 1. Data Preparation and Cleaning ---
 print("--- 1. Data Preparation and Cleaning ---")
 try:
     df_text = pd.read_csv('Symptom2Disease.csv') 
@@ -46,39 +44,51 @@ X_train_text, X_test_text, y_train_id, y_test_id = train_test_split(
     stratify=df_text['disease_id']
 )
 
-joblib.dump(le, 'le_semantic.pkl')
-print(f"Total Unique Diseases: {len(le.classes_)}")
-print("Data preparation complete.")
+# --- 2. Save Components (CRITICAL STEP) ---
+print("\n2. Saving data splits and encoder...")
 
-
-# --- 2. Semantic Vectorization (Code 4.2) ---
-print("\n--- 2. Semantic Vectorization (Embedding Generation) ---")
-
-# Choose and Load Sentence Transformer Model
-MODEL_NAME = 'all-MiniLM-L6-v2'
-print(f"Loading Sentence Transformer model: {MODEL_NAME}...")
 try:
-    sbert_model = SentenceTransformer(MODEL_NAME)
+    # Save Data Splits
+    X_train_text.to_csv('X_train_text.csv', index=False, header=True)
+    X_test_text.to_csv('X_test_text.csv', index=False, header=True)
+    np.save('y_train_id.npy', y_train_id.values)
+    np.save('y_test_id.npy', y_test_id.values)
+    joblib.dump(le, 'le_semantic.pkl')
+    
+    # --- Check for successful file creation ---
+    if os.path.exists('X_train_text.csv'):
+        print("SUCCESS: Data files created. Proceeding to model building.")
+    else:
+        print("FATAL: File creation failed (Permission issue?). Stopping.")
+        exit()
+
 except Exception as e:
-    print(f"ERROR: Failed to load SentenceTransformer. Did you run 'pip install sentence-transformers'? Details: {e}")
+    print(f"FATAL ERROR during file saving: {e}")
     exit()
 
-# Encode Data (Generate Embeddings)
+# --- 3. Semantic Vectorization (Code 4.2) ---
+print("\n--- 3. Semantic Vectorization (Embedding Generation) ---")
+MODEL_NAME = 'all-MiniLM-L6-v2'
+sbert_model = SentenceTransformer(MODEL_NAME)
+
 print("Generating embeddings for Training data...")
 X_train_vectors = sbert_model.encode(X_train_text.tolist(), show_progress_bar=True)
 print("Generating embeddings for Testing data...")
 X_test_vectors = sbert_model.encode(X_test_text.tolist(), show_progress_bar=True)
 
-# Save the Sentence Transformer model separately for the interactive script
+# --- Save Initial Vectors and SBERT Model ---
+np.save('X_train_vectors.npy', X_train_vectors)
+np.save('X_test_vectors.npy', X_test_vectors)
 joblib.dump(sbert_model, 'sbert_model.pkl')
 
-print("Semantic Vectorization complete.")
+print("Semantic Vectorization complete. Initial model saved.")
 
 
-# --- 3. Semantic SVM Classification (Code 4.3) ---
-print("\n--- 3. Training Semantic SVM Classifier ---")
+# --- 4. Training Semantic SVM Classifier (Baseline) ---
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
 
-# Set probability=True to enable predict_proba, needed for confidence scoring
+print("\n--- 4. Training Semantic SVM Classifier ---")
 svm_semantic_model = SVC(kernel='linear', C=1.0, probability=True, random_state=42)
 svm_semantic_model.fit(X_train_vectors, y_train_id)
 
@@ -88,10 +98,7 @@ accuracy_semantic = accuracy_score(y_test_id, y_pred_semantic)
 
 print("\n--- Evaluation Results (Semantic SVM) ---")
 print(f"Accuracy on Test Data: **{accuracy_semantic*100:.2f}%**")
+joblib.dump(svm_semantic_model, 'svm_semantic_model_baseline.pkl') 
 
-# Save Semantic Model
-joblib.dump(svm_semantic_model, 'svm_semantic_model.pkl')
-
-print("\nSemantic SVM Model saved as 'svm_semantic_model.pkl'.")
 print("--------------------------------------------------")
-print("Ready for Interactive Testing (Code 4.4).")
+print("Foundation script SUCCESS. Now run fine_tune_semantic_model.py")

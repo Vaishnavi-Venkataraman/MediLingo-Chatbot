@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediLingo Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Define color variables for easy dynamic styling */
+        :root {
+            --primary: #1e88e5;
+            --primary-dark: #1565c0;
+            --bg-light: #f7f9fc;
+            --text-dark: #1a202c;
+            --risk-high: #d32f2f; /* Red */
+            --risk-moderate: #fbc02d; /* Amber */
+            --risk-low: #388e3c; /* Green */
+        }
+
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background-color: var(--bg-light);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 30px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        h1 { 
+            color: var(--primary); 
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        .chat-window {
+            height: 75vh;
+            background: #fff;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        #history {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #fcfcfc;
+        }
+        /* User Message Bubble */
+        .user-message {
+            background-color: var(--primary);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 15px 15px 0 15px;
+            max-width: 70%;
+            margin-left: auto;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+            word-break: break-word; 
+        }
+        /* Bot Response Card Styling */
+        .bot-message {
+            background-color: #e0f7fa;
+            color: var(--text-dark);
+            padding: 15px;
+            border-radius: 15px 15px 15px 0;
+            max-width: 85%;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            font-size: 0.95rem;
+            word-break: break-word; 
+        }
+        .bot-header {
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 8px;
+            border-bottom: 1px solid #c8e8e8;
+            padding-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        /* Dynamic Risk Tags */
+        .risk-tag {
+            font-size: 0.8rem;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: 600;
+            color: white;
+        }
+        .risk-high { background-color: var(--risk-high); }
+        .risk-moderate { background-color: var(--risk-moderate); color: var(--text-dark); }
+        .risk-low { background-color: var(--risk-low); }
+
+        /* Confidence Visualization */
+        .confidence-bar {
+            height: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        .confidence-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.5s ease;
+        }
+        /* Input/Button Styling */
+        #query {
+            height: 48px;
+            flex-grow: 1;
+            min-width: 0; 
+        }
+        button { 
+            background-color: var(--primary); 
+            transition: background-color 0.3s;
+            height: 48px;
+        }
+        button:hover { 
+            background-color: var(--primary-dark); 
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 1rem;
+            background-color: #f3f4f6; 
+            border-top: 1px solid #e5e7eb; 
+        }
+        /* Responsive scrollbar fix for conversation */
+        #history::-webkit-scrollbar {
+            width: 8px;
+        }
+        #history::-webkit-scrollbar-thumb {
+            background-color: #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="p-6">
+    <div class="container">
+        <h1 class="text-3xl" style="color: var(--primary);">MediLingo Multilingual Chatbot</h1>
+        <p class="text-sm text-gray-500">Backend API connected to <a href="http://127.0.0.1:8000/docs" target="_blank" class="text-blue-500">http://127.0.0.1:8000</a></p>
+
+        <div class="chat-window mt-6">
+            <div id="history">
+                <div class="bot-message">
+                    <p class="bot-header">MediLingo AI</p>
+                    Hello! I'm ready to analyze your symptoms. You can ask in English, Hindi, or Tamil.
+                    <p class="text-xs mt-2 text-gray-500">Example: "I have fever and cough" or "मुझे बुखार और सिरदर्द है"</p>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <input type="text" id="query" placeholder="Enter symptoms or query (e.g., What are the precautions for this?)" 
+                       class="flex-grow p-3 text-base border-gray-300 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                <button onclick="sendQuery()" id="analyze-button" class="px-5 rounded-lg">Analyze</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:8000/chat';
+        const historyDiv = document.getElementById('history');
+        const queryInput = document.getElementById('query');
+        const analyzeButton = document.getElementById('analyze-button');
+
+        function appendMessage(senderClass, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = senderClass;
+            messageDiv.innerHTML = content;
+            historyDiv.appendChild(messageDiv);
+            // Auto-scroll to the bottom
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+        }
+
+        function createRiskTag(level) {
+            let className = '';
+            let emoji = '';
+            let text = level.replace('_', ' ');
+
+            if (level.includes('HIGH')) {
+                className = 'risk-high';
+                emoji = '🚨';
+            } else if (level.includes('MODERATE')) {
+                className = 'risk-moderate';
+                emoji = '⚠️';
+            } else {
+                className = 'risk-low';
+                emoji = '✅';
+            }
+            return `<span class="risk-tag ${className}">${emoji} ${text}</span>`;
+        }
+
+        function renderBotResponse(data) {
+            // Determine Risk Class and Tag
+            const riskTag = createRiskTag(data.triage_level);
+            
+            // Determine language for display
+            let primaryLang = 'English';
+            if (data.primary_disease.includes('(hi)')) primaryLang = 'Hindi';
+            else if (data.primary_disease.includes('(ta)')) primaryLang = 'Tamil';
+            
+            if (data.is_faq) {
+                // FAQ Response (FIXED: The API returns the answer in the primary_disease field)
+                const retrievedAnswer = data.primary_disease.replace('Answer: ', '');
+
+                return `
+                    <p class="bot-header">${riskTag} Information Retrieval</p>
+                    <p class="mt-3 text-sm text-blue-600 font-medium">Query successfully routed to the knowledge base.</p>
+                    <h3 class="text-lg font-semibold text-gray-800 mt-4 pt-3 border-t">Retrieved Guidance:</h3>
+                    <p class="text-sm whitespace-pre-wrap">${retrievedAnswer}</p>
+                `;
+            }
+
+            // Symptom Checker Response
+            const primary = data.top_3_predictions[0];
+            const primaryConfidence = (primary.confidence * 100).toFixed(1);
+
+            let top3Html = data.top_3_predictions.map((p, index) => {
+                const conf = (p.confidence * 100).toFixed(1);
+                const barWidth = Math.max(10, conf) + '%';
+                const barColor = index === 0 ? 'var(--primary-dark)' : '#94a3b8';
+                
+                return `
+                    <div class="alt-prediction mt-1">
+                        <p class="text-sm text-gray-700"><strong>${index + 1}. ${p.disease}</strong> (${conf}%)</p>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${barWidth}; background-color: ${barColor};"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Action/Advice based on risk
+            let actionAdvice = 'Monitor symptoms and consider self-care.';
+            if (data.triage_level.includes('HIGH')) {
+                actionAdvice = '🚨 SEEK IMMEDIATE PROFESSIONAL MEDICAL ATTENTION.';
+            } else if (data.triage_level.includes('MODERATE')) {
+                actionAdvice = '⚠️ Consult a doctor within 24-48 hours.';
+            }
+
+            return `
+                <p class="bot-header">
+                    ${riskTag} Diagnosis Complete
+                    <span class="text-xs font-normal">Confidence: ${primaryConfidence}%</span>
+                </p>
+                
+                <h3 class="text-lg font-semibold text-gray-800">Primary Prediction (${primaryLang})</h3>
+                <p class="text-base mt-1"><strong>Disease:</strong> <span class="text-xl font-bold text-red-700">${data.primary_disease}</span></p>
+                <p class="mt-3 font-semibold text-sm border-t pt-2">Recommended Action:</p>
+                <p class="text-base font-medium text-blue-600">${actionAdvice}</p>
+
+                <h3 class="text-lg font-semibold text-gray-800 mt-4 border-t pt-3">Top Alternatives</h3>
+                ${top3Html}
+            `;
+        }
+
+
+        async function sendQuery() {
+            const query = queryInput.value.trim();
+            if (query === "") return;
+
+            // 1. Append User Message
+            appendMessage('user-message', query);
+            
+            // Prepare for processing state
+            queryInput.value = '';
+            analyzeButton.disabled = true;
+            queryInput.disabled = true;
+
+            // 2. Append Loading Message
+            appendMessage('bot-message', '<p id="loading-dots" class="text-gray-500">Analyzing...</p>');
+            
+            const contextDiseaseValue = ""; // Placeholder for simplicity
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query, context_disease: contextDiseaseValue }), 
+                });
+
+                // Remove the loading message
+                historyDiv.lastChild.remove();
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    appendMessage('bot-message', `<p class="text-red-600">❌ API Error: Status ${response.status}. Check server logs for Python stack trace.</p>`);
+                    return;
+                }
+
+                const data = await response.json();
+                
+                // 3. Append Bot Response
+                appendMessage('bot-message', renderBotResponse(data));
+
+            } catch (error) {
+                // Remove the loading message
+                if (historyDiv.lastChild) historyDiv.lastChild.remove();
+                appendMessage('bot-message', `<p class="text-red-600">❌ Network/Connection Error. Details: ${error.message}</p>`);
+            } finally {
+                analyzeButton.disabled = false;
+                queryInput.disabled = false;
+                queryInput.focus();
+            }
+        }
+        
+        // This is necessary to handle the Enter key press
+        queryInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendQuery();
+            }
+        });
+    </script>
+</body>
+</html>
