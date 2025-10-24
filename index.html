@@ -133,13 +133,24 @@
             background-color: #f3f4f6; 
             border-top: 1px solid #e5e7eb; 
         }
-        /* Responsive scrollbar fix for conversation */
+        /* Fix for scrollbar in conversation history */
         #history::-webkit-scrollbar {
             width: 8px;
         }
         #history::-webkit-scrollbar-thumb {
             background-color: #ccc;
             border-radius: 4px;
+        }
+        .faq-answer {
+            white-space: pre-wrap;
+            background-color: #fff;
+            border: 1px solid #c8e8e8;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: #333;
         }
     </style>
 </head>
@@ -150,7 +161,7 @@
 
         <div class="chat-window mt-6">
             <div id="history">
-                <div class="bot-message">
+                <div class="bot-message" id="initial-message">
                     <p class="bot-header">MediLingo AI</p>
                     Hello! I'm ready to analyze your symptoms. You can ask in English, Hindi, or Tamil.
                     <p class="text-xs mt-2 text-gray-500">Example: "I have fever and cough" or "मुझे बुखार और सिरदर्द है"</p>
@@ -161,6 +172,7 @@
                 <input type="text" id="query" placeholder="Enter symptoms or query (e.g., What are the precautions for this?)" 
                        class="flex-grow p-3 text-base border-gray-300 border rounded-lg focus:ring-2 focus:ring-blue-500">
                 <button onclick="sendQuery()" id="analyze-button" class="px-5 rounded-lg">Analyze</button>
+                <button onclick="startNewChat()" id="new-chat-button" class="bg-gray-700 hover:bg-gray-900 px-5 rounded-lg text-sm">New Chat</button>
             </div>
         </div>
     </div>
@@ -170,13 +182,25 @@
         const historyDiv = document.getElementById('history');
         const queryInput = document.getElementById('query');
         const analyzeButton = document.getElementById('analyze-button');
+        
+        // CRITICAL FIX: Global variable to store the last predicted disease for contextual follow-up
+        let lastPredictedDisease = null; 
+        let symptomHistory = []; 
+
+        function startNewChat() {
+            lastPredictedDisease = null;
+            symptomHistory = [];
+            // Get initial message content safely
+            const initialContent = document.getElementById('initial-message').innerHTML;
+            historyDiv.innerHTML = `<div class="bot-message">${initialContent}</div>`;
+            queryInput.focus();
+        }
 
         function appendMessage(senderClass, content) {
             const messageDiv = document.createElement('div');
             messageDiv.className = senderClass;
             messageDiv.innerHTML = content;
             historyDiv.appendChild(messageDiv);
-            // Auto-scroll to the bottom
             historyDiv.scrollTop = historyDiv.scrollHeight;
         }
 
@@ -198,11 +222,9 @@
             return `<span class="risk-tag ${className}">${emoji} ${text}</span>`;
         }
 
-        function renderBotResponse(data) {
-            // Determine Risk Class and Tag
+        function renderBotResponse(data, finalQuery) {
             const riskTag = createRiskTag(data.triage_level);
             
-            // Determine language for display
             let primaryLang = 'English';
             if (data.primary_disease.includes('(hi)')) primaryLang = 'Hindi';
             else if (data.primary_disease.includes('(ta)')) primaryLang = 'Tamil';
@@ -215,7 +237,7 @@
                     <p class="bot-header">${riskTag} Information Retrieval</p>
                     <p class="mt-3 text-sm text-blue-600 font-medium">Query successfully routed to the knowledge base.</p>
                     <h3 class="text-lg font-semibold text-gray-800 mt-4 pt-3 border-t">Retrieved Guidance:</h3>
-                    <p class="text-sm whitespace-pre-wrap">${retrievedAnswer}</p>
+                    <div class="faq-answer">${retrievedAnswer}</div>
                 `;
             }
 
@@ -252,14 +274,41 @@
                     <span class="text-xs font-normal">Confidence: ${primaryConfidence}%</span>
                 </p>
                 
+                <p class="text-xs text-gray-500 mb-2 border-b pb-1">Current Analysed Symptoms: 
+                    <span class="font-medium text-gray-700">${finalQuery}</span>
+                </p>
+
                 <h3 class="text-lg font-semibold text-gray-800">Primary Prediction (${primaryLang})</h3>
                 <p class="text-base mt-1"><strong>Disease:</strong> <span class="text-xl font-bold text-red-700">${data.primary_disease}</span></p>
                 <p class="mt-3 font-semibold text-sm border-t pt-2">Recommended Action:</p>
                 <p class="text-base font-medium text-blue-600">${actionAdvice}</p>
 
-                <h3 class="text-lg font-semibold text-gray-800 mt-4 border-t pt-3">Top Alternatives</h3>
+                <h3 class="text-lg font-semibold text-gray-800 mt-4 pt-3">Top Alternatives</h3>
                 ${top3Html}
             `;
+        }
+        
+        // CRITICAL LOGIC: Checks if the input is likely a diagnostic symptom list
+        function isSymptomQuery(query) {
+            const symptomKeywords = ['pain', 'fever', 'ache', 'sore', 'rash', 'cough', 'vomit', 'dizzy', 'chills', 'swelling', 'bleeding'];
+            const questionWords = ['what', 'how', 'why', 'who', 'is', 'are', 'do', 'can', 'should', 'precautions', 'treatment', 'exercise', 'advice'];
+            
+            const lowerQuery = query.toLowerCase();
+
+            // 1. If it starts with a question word or contains key action words, treat it as a question.
+            if (questionWords.some(word => lowerQuery.includes(word + ' '))) {
+                return false;
+            }
+
+            // 2. Otherwise, if it contains one or more symptom keywords, treat it as symptoms.
+            let symptomCount = 0;
+            symptomKeywords.forEach(keyword => {
+                if (lowerQuery.includes(keyword)) {
+                    symptomCount++;
+                }
+            });
+
+            return symptomCount >= 1; 
         }
 
 
@@ -270,7 +319,6 @@
             // 1. Append User Message
             appendMessage('user-message', query);
             
-            // Prepare for processing state
             queryInput.value = '';
             analyzeButton.disabled = true;
             queryInput.disabled = true;
@@ -278,13 +326,36 @@
             // 2. Append Loading Message
             appendMessage('bot-message', '<p id="loading-dots" class="text-gray-500">Analyzing...</p>');
             
-            const contextDiseaseValue = ""; // Placeholder for simplicity
+            let contextDiseaseValue = null;
+            let finalQuery = query;
+
+            // --- CRITICAL MEMORY AND CONTEXT MANAGEMENT FIX ---
+            const isSymptomCheck = isSymptomQuery(query);
+            
+            if (isSymptomCheck) {
+                // CASE 1 & 2: Symptom input (CUMULATIVE DIAGNOSIS)
+                symptomHistory.push(query);
+                finalQuery = symptomHistory.join(', and also ');
+                lastPredictedDisease = null; // Clear disease memory before sending diagnosis
+
+            } else {
+                // CASE 3: Follow-up question (FAQ/Precautions)
+                finalQuery = query;
+                contextDiseaseValue = lastPredictedDisease; // Use the stored disease name
+            }
+            
+            // Final context sent to API
+            const finalContext = contextDiseaseValue || null;
+
 
             try {
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: query, context_disease: contextDiseaseValue }), 
+                    body: JSON.stringify({ 
+                        query: finalQuery, 
+                        context_disease: finalContext
+                    }), 
                 });
 
                 // Remove the loading message
@@ -298,8 +369,14 @@
 
                 const data = await response.json();
                 
-                // 3. Append Bot Response
-                appendMessage('bot-message', renderBotResponse(data));
+                // 3. UPDATE CONTEXT MEMORY: 
+                if (!data.is_faq) {
+                     // Save the new primary prediction only if it was a symptom check
+                     lastPredictedDisease = data.primary_disease;
+                }
+
+                // 4. Append Bot Response
+                appendMessage('bot-message', renderBotResponse(data, finalQuery));
 
             } catch (error) {
                 // Remove the loading message

@@ -1,4 +1,4 @@
-# CODE 55.0: FastAPI Backend (FINAL: Returning Actual FAQ Answer)
+# CODE 56.0: FastAPI Backend (FINAL: Robust Triage and Contextual FAQ)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +8,7 @@ import torch
 import numpy as np
 import pandas as pd
 import re
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional 
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity 
@@ -50,7 +50,7 @@ LANG_MAP = {'en': LANG_ENGLISH_CODE, 'hi': LANG_HINDI_CODE, 'ta': LANG_TAMIL_COD
             LANG_ENGLISH_CODE: 'en', LANG_HINDI_CODE: 'hi', LANG_TAMIL_CODE: 'ta'}
 
 
-# --- Utility Functions (Full Logic) ---
+# --- Utility Functions ---
 def clean_text(text):
     text = text.lower()
     text = re.sub(r'[^a-z\s]', '', text) 
@@ -76,7 +76,6 @@ def translate_text(text, src_lang, tgt_lang):
 
 # --- FINAL ROBUST TRIAGE LOGIC ---
 def calculate_triage_score_and_tokens(symptoms_text_en: str):
-    recognized_symptoms_raw = []
     search_string = symptoms_text_en.lower().replace(' ', '_')
     
     recognized_keys = set()
@@ -108,13 +107,15 @@ def calculate_triage_score_and_tokens(symptoms_text_en: str):
     
     return final_score, level, final_recognized_tokens
 
-def retrieve_faq_answer(user_input_en: str, model, embeddings, df_kb, context_disease=None, threshold=0.7):
-    # FULL STATIC RETRIEVAL LOGIC
+def retrieve_faq_answer(user_input_en: str, model, embeddings, df_kb, context_disease: Optional[str] = None, threshold=0.7):
+    # This remains the static retrieval function
     modified_query = user_input_en
     
     action_keywords = ['exercise', 'precautions', 'treatment', 'good for', 'avoid', 'what should i do', 'what do i do', 'its', 'this']
     
+    # CRITICAL FIX 1: Contextual Query Rephrasing 
     if context_disease and any(k in user_input_en.lower() for k in action_keywords):
+        # Substitute 'its/this' AND force the query structure
         modified_query = f"what are the precautions for {context_disease}"
 
     cleaned_query = clean_text(modified_query)
@@ -135,7 +136,7 @@ def retrieve_faq_answer(user_input_en: str, model, embeddings, df_kb, context_di
 # --- API Data Schemas ---
 class ChatInput(BaseModel):
     query: str
-    context_disease: str = None
+    context_disease: Optional[str] = None
 
 class PredictionOutput(BaseModel):
     primary_disease: str
@@ -148,6 +149,7 @@ class PredictionOutput(BaseModel):
 @app.post("/chat", response_model=PredictionOutput)
 def chat_endpoint(data: ChatInput):
     user_input = data.query
+    context_disease = data.context_disease
     
     # 1. Detect Language and Translate Input
     src_lang_code = detect_language(user_input)
@@ -156,9 +158,13 @@ def chat_endpoint(data: ChatInput):
     else:
         user_input_en = user_input
         
-    # --- PHASE 1: FAQ RETRIEVAL CHECK (FULL LOGIC) ---
-    match_q, match_a, score = retrieve_faq_answer(user_input_en, SBERT_MODEL, FAQ_EMBEDDINGS, DF_FAQ)
+    # --- PHASE 1: FAQ RETRIEVAL CHECK (Full Logic) ---
+    # We pass the full query (which might be the concatenated symptom history) AND the context_disease
+    match_q, match_a, score = retrieve_faq_answer(
+        user_input_en, SBERT_MODEL, FAQ_EMBEDDINGS, DF_FAQ, context_disease=context_disease
+    )
     
+    # We now only enter the FAQ path if a high-confidence context-driven match is found.
     if match_a and score > 0.7:
         
         # Translate the answer back to the source language
@@ -173,7 +179,7 @@ def chat_endpoint(data: ChatInput):
             is_faq=True
         )
     
-    # --- PHASE 2: SYMPTOM CHECKER FALLBACK ---
+    # --- PHASE 2: SYMPTOM CHECKER FALLBACK (using full user_input_en as cumulative symptom list) ---
     
     cleaned_input = clean_text(user_input_en)
     input_vector = SBERT_MODEL.encode([cleaned_input]).astype(np.float64) 
