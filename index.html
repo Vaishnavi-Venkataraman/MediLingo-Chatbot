@@ -3,44 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MediLingo Chatbot</title>
+    <title>MediLingo AI - Your Health Assistant</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     
     <style>
-        /* Define color variables for easy dynamic styling */
+        /* Define a richer color palette */
         :root {
-            --primary: #1e88e5;
-            --primary-dark: #1565c0;
-            --bg-light: #f7f9fc;
-            --text-dark: #1a202c;
-            --risk-high: #d32f2f; /* Red */
-            --risk-moderate: #fbc02d; /* Amber */
-            --risk-low: #388e3c; /* Green */
+            --primary-blue: #2196f3; /* Stronger primary color */
+            --primary-dark-blue: #1976d2; /* Darker shade for hover/active */
+            --secondary-green: #4caf50; /* A soothing green for success/info */
+            --accent-purple: #9c27b0; /* A touch of vibrant accent */
+            --bg-light: #e3f2fd; /* Very light blue background */
+            --card-bg: #ffffff; /* White card background */
+            --text-dark: #263238; /* Dark gray for main text */
+            --text-medium: #546e7a; /* Medium gray for secondary text */
+            --border-light: #bbdefb; /* Light blue for borders */
+            --chat-user-bg: #bbdefb; /* Light blue for user bubbles */
+            --chat-bot-bg: #e0f2f7; /* Very light cyan for bot bubbles */
+            --risk-high: #ef5350; /* Brighter red for high risk */
+            --risk-moderate: #ffca28; /* Amber for moderate risk */
+            --risk-low: #66bb6a; /* Vibrant green for low risk */
         }
 
         body { 
-            font-family: 'Poppins', sans-serif; 
+            font-family: 'Roboto', sans-serif; /* More modern font for body */
             background-color: var(--bg-light);
             min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .container {
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 30px;
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            max-width: 960px; /* Slightly wider container */
+            width: 100%;
+            margin: 20px; /* Adjust margin for better fit on various screens */
+            background: var(--card-bg);
+            border-radius: 20px; /* More rounded corners */
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15); /* Stronger, softer shadow */
+            overflow: hidden; /* Ensure rounded corners are respected */
+            display: flex;
+            flex-direction: column;
         }
         h1 { 
-            color: var(--primary); 
+            font-family: 'Montserrat', sans-serif; /* Montserrat for headings */
+            color: var(--primary-dark-blue); 
             font-weight: 700;
             margin-bottom: 5px;
+            text-align: center;
+            padding-top: 20px;
+        }
+        .header-meta {
+            text-align: center;
+            color: var(--text-medium);
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-light);
         }
         .chat-window {
-            height: 75vh;
-            background: #fff;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            height: 80vh; /* Slightly taller chat window */
+            max-height: 700px;
+            background: var(--card-bg);
             border-radius: 12px;
             overflow: hidden;
             display: flex;
@@ -48,131 +72,228 @@
         }
         #history {
             flex-grow: 1;
-            padding: 20px;
+            padding: 25px; /* More padding */
             overflow-y: auto;
-            background-color: #fcfcfc;
+            background-color: var(--chat-bot-bg); /* Light background for chat history */
+            border-radius: 12px;
         }
         /* User Message Bubble */
         .user-message {
-            background-color: var(--primary);
+            background-color: var(--primary-blue);
             color: white;
-            padding: 10px 15px;
-            border-radius: 15px 15px 0 15px;
-            max-width: 70%;
+            padding: 12px 18px;
+            border-radius: 20px 20px 5px 20px; /* More organic shape */
+            max-width: 75%; /* Slightly wider */
             margin-left: auto;
-            margin-bottom: 10px;
-            font-size: 0.95rem;
+            margin-bottom: 12px;
+            font-size: 0.98rem;
             word-break: break-word; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            animation: fadeInRight 0.3s ease-out; /* Fade in animation */
         }
         /* Bot Response Card Styling */
         .bot-message {
-            background-color: #e0f7fa;
+            background-color: var(--chat-bot-bg); /* Light bot background */
             color: var(--text-dark);
-            padding: 15px;
-            border-radius: 15px 15px 15px 0;
-            max-width: 85%;
-            margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            font-size: 0.95rem;
+            padding: 18px;
+            border-radius: 20px 20px 20px 5px; /* More organic shape */
+            max-width: 80%; /* Slightly wider */
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); /* Softer shadow */
+            font-size: 0.98rem;
             word-break: break-word; 
+            animation: fadeInLeft 0.3s ease-out; /* Fade in animation */
         }
         .bot-header {
             font-weight: 700;
-            color: var(--primary-dark);
-            margin-bottom: 8px;
-            border-bottom: 1px solid #c8e8e8;
-            padding-bottom: 5px;
+            color: var(--primary-dark-blue);
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--border-light);
+            padding-bottom: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.1rem;
         }
         /* Dynamic Risk Tags */
         .risk-tag {
-            font-size: 0.8rem;
-            padding: 3px 8px;
-            border-radius: 5px;
+            font-size: 0.85rem;
+            padding: 5px 10px;
+            border-radius: 20px; /* Pill shape */
             font-weight: 600;
             color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
         .risk-high { background-color: var(--risk-high); }
         .risk-moderate { background-color: var(--risk-moderate); color: var(--text-dark); }
         .risk-low { background-color: var(--risk-low); }
+        .risk-info { background-color: var(--secondary-green); } /* New tag for info requests */
 
         /* Confidence Visualization */
         .confidence-bar {
-            height: 10px;
-            background-color: #f0f0f0;
-            border-radius: 5px;
-            margin-top: 5px;
+            height: 8px; /* Slightly thinner bar */
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            margin-top: 8px;
             overflow: hidden;
         }
         .confidence-fill {
             height: 100%;
-            border-radius: 5px;
-            transition: width 0.5s ease;
+            border-radius: 4px;
+            transition: width 0.5s ease-out, background-color 0.3s ease-out; /* Smooth transitions */
         }
         /* Input/Button Styling */
         #query {
-            height: 48px;
+            height: 52px; /* Taller input field */
             flex-grow: 1;
             min-width: 0; 
+            border: 1px solid var(--border-light);
+            border-radius: 25px; /* Pill-shaped input */
+            padding: 10px 20px;
+            font-size: 1rem;
+            color: var(--text-dark);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+            transition: border-color 0.3s, box-shadow 0.3s;
         }
-        button { 
-            background-color: var(--primary); 
-            transition: background-color 0.3s;
-            height: 48px;
-        }
-        button:hover { 
-            background-color: var(--primary-dark); 
+        #query:focus {
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.2); /* Focus glow */
+            outline: none;
         }
         .input-container {
             display: flex;
-            gap: 10px;
+            gap: 15px; /* More space between input and buttons */
             align-items: center;
-            padding: 1rem;
-            background-color: #f3f4f6; 
-            border-top: 1px solid #e5e7eb; 
+            padding: 18px 25px; /* More padding */
+            background-color: var(--bg-light); 
+            border-top: 1px solid var(--border-light); 
         }
-        /* Fix for scrollbar in conversation history */
+        button { 
+            background-color: var(--primary-blue); 
+            transition: background-color 0.3s ease-out, transform 0.2s ease-out;
+            height: 52px;
+            padding: 0 25px; /* Wider buttons */
+            border-radius: 25px; /* Pill-shaped buttons */
+            font-weight: 600;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        button:hover { 
+            background-color: var(--primary-dark-blue); 
+            transform: translateY(-1px); /* Subtle lift effect */
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button:disabled {
+            background-color: #90caf9; /* Lighter blue for disabled */
+            cursor: not-allowed;
+            transform: none;
+        }
+        #new-chat-button {
+            background-color: var(--text-medium); /* Darker gray for 'New Chat' */
+            font-size: 0.9rem;
+            padding: 0 20px;
+        }
+        #new-chat-button:hover {
+            background-color: var(--text-dark);
+        }
+
+        /* Scrollbar Styling */
         #history::-webkit-scrollbar {
             width: 8px;
         }
-        #history::-webkit-scrollbar-thumb {
-            background-color: #ccc;
-            border-radius: 4px;
+        #history::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
         }
+        #history::-webkit-scrollbar-thumb {
+            background-color: var(--primary-blue);
+            border-radius: 10px;
+            border: 2px solid #f1f1f1;
+        }
+        #history::-webkit-scrollbar-thumb:hover {
+            background-color: var(--primary-dark-blue);
+        }
+
+        /* FAQ Answer Styling */
         .faq-answer {
             white-space: pre-wrap;
             background-color: #fff;
-            border: 1px solid #c8e8e8;
-            padding: 10px;
-            border-radius: 6px;
+            border: 1px solid var(--border-light);
+            padding: 15px;
+            border-radius: 10px;
             margin-top: 10px;
-            font-family: monospace;
+            font-family: 'Roboto Mono', monospace; /* Monospace for code/guidance */
             font-size: 0.9rem;
-            color: #333;
+            color: var(--text-dark);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
         }
+
+        /* Animations */
+        @keyframes fadeInRight {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes fadeInLeft {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes loadingPulse {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            50% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.8); opacity: 0.5; }
+        }
+        #loading-dots span {
+            display: inline-block;
+            animation: loadingPulse 1.4s infinite ease-in-out;
+            animation-delay: calc(0.2s * var(--i));
+            background-color: var(--text-medium);
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin: 0 2px;
+        }
+        
     </style>
 </head>
-<body class="p-6">
+<body class="p-4">
     <div class="container">
-        <h1 class="text-3xl" style="color: var(--primary);">MediLingo Multilingual Chatbot</h1>
-        <p class="text-sm text-gray-500">Backend API connected to <a href="http://127.0.0.1:8000/docs" target="_blank" class="text-blue-500">http://127.0.0.1:8000</a></p>
+        <h1 class="text-4xl">MediLingo AI</h1>
+        <p class="header-meta text-sm">Your Multilingual Health Assistant</p>
 
-        <div class="chat-window mt-6">
+        <div class="chat-window">
             <div id="history">
                 <div class="bot-message" id="initial-message">
-                    <p class="bot-header">MediLingo AI</p>
+                    <p class="bot-header">
+                        <i class="fas fa-robot mr-2 text-primary-dark-blue"></i> MediLingo AI
+                    </p>
                     Hello! I'm ready to analyze your symptoms. You can ask in English, Hindi, or Tamil.
-                    <p class="text-xs mt-2 text-gray-500">Example: "I have fever and cough" or "मुझे बुखार और सिरदर्द है"</p>
+                    <p class="text-xs mt-3 text-gray-500">
+                        <span class="font-semibold">Examples:</span>
+                        <br>"I have fever and cough"
+                        <br>"मुझे बुखार और सिरदर्द है"
+                        <br>"காய்ச்சல் மற்றும் தலைவலி உள்ளது"
+                        <br>"What are the precautions for flu?"
+                    </p>
                 </div>
             </div>
 
             <div class="input-container">
-                <input type="text" id="query" placeholder="Enter symptoms or query (e.g., What are the precautions for this?)" 
-                       class="flex-grow p-3 text-base border-gray-300 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                <button onclick="sendQuery()" id="analyze-button" class="px-5 rounded-lg">Analyze</button>
-                <button onclick="startNewChat()" id="new-chat-button" class="bg-gray-700 hover:bg-gray-900 px-5 rounded-lg text-sm">New Chat</button>
+                <input type="text" id="query" placeholder="Describe your symptoms or ask a question..." 
+                       class="flex-grow p-3 text-base focus:ring-primary-blue focus:border-primary-blue">
+                <button onclick="sendQuery()" id="analyze-button" class="shadow-md">
+                    <i class="fas fa-paper-plane"></i> Send
+                </button>
+                <button onclick="startNewChat()" id="new-chat-button" class="shadow-md">
+                    <i class="fas fa-sync-alt"></i> New Chat
+                </button>
             </div>
         </div>
     </div>
@@ -183,7 +304,7 @@
         const queryInput = document.getElementById('query');
         const analyzeButton = document.getElementById('analyze-button');
         
-        // CRITICAL FIX: Global variable to store the last predicted disease for contextual follow-up
+        // Global variables for state management
         let lastPredictedDisease = null; 
         let symptomHistory = []; 
 
@@ -215,9 +336,12 @@
             } else if (level.includes('MODERATE')) {
                 className = 'risk-moderate';
                 emoji = '⚠️';
+            } else if (level.includes('INFO')) { // New tag for Info Request
+                className = 'risk-info';
+                emoji = '✅';
             } else {
                 className = 'risk-low';
-                emoji = '✅';
+                emoji = '🟢'; // Changed emoji for low risk for better contrast
             }
             return `<span class="risk-tag ${className}">${emoji} ${text}</span>`;
         }
@@ -226,17 +350,25 @@
             const riskTag = createRiskTag(data.triage_level);
             
             let primaryLang = 'English';
-            if (data.primary_disease.includes('(hi)')) primaryLang = 'Hindi';
-            else if (data.primary_disease.includes('(ta)')) primaryLang = 'Tamil';
+            // Check for explicit language tags from backend
+            if (data.primary_disease.includes('(hi)')) {
+                primaryLang = 'Hindi';
+                data.primary_disease = data.primary_disease.replace(' (hi)', '').trim();
+            } else if (data.primary_disease.includes('(ta)')) {
+                primaryLang = 'Tamil';
+                data.primary_disease = data.primary_disease.replace(' (ta)', '').trim();
+            }
             
             if (data.is_faq) {
-                // FAQ Response (FIXED: The API returns the answer in the primary_disease field)
                 const retrievedAnswer = data.primary_disease.replace('Answer: ', '');
 
                 return `
-                    <p class="bot-header">${riskTag} Information Retrieval</p>
+                    <p class="bot-header">
+                        <i class="fas fa-info-circle mr-2"></i> Information Retrieval
+                        ${riskTag}
+                    </p>
                     <p class="mt-3 text-sm text-blue-600 font-medium">Query successfully routed to the knowledge base.</p>
-                    <h3 class="text-lg font-semibold text-gray-800 mt-4 pt-3 border-t">Retrieved Guidance:</h3>
+                    <h3 class="text-lg font-semibold text-gray-800 mt-4 pt-3 border-t border-dashed border-border-light">Retrieved Guidance:</h3>
                     <div class="faq-answer">${retrievedAnswer}</div>
                 `;
             }
@@ -248,10 +380,10 @@
             let top3Html = data.top_3_predictions.map((p, index) => {
                 const conf = (p.confidence * 100).toFixed(1);
                 const barWidth = Math.max(10, conf) + '%';
-                const barColor = index === 0 ? 'var(--primary-dark)' : '#94a3b8';
+                const barColor = index === 0 ? 'var(--primary-dark-blue)' : '#94a3b8';
                 
                 return `
-                    <div class="alt-prediction mt-1">
+                    <div class="alt-prediction mt-2">
                         <p class="text-sm text-gray-700"><strong>${index + 1}. ${p.disease}</strong> (${conf}%)</p>
                         <div class="confidence-bar">
                             <div class="confidence-fill" style="width: ${barWidth}; background-color: ${barColor};"></div>
@@ -263,44 +395,46 @@
             // Action/Advice based on risk
             let actionAdvice = 'Monitor symptoms and consider self-care.';
             if (data.triage_level.includes('HIGH')) {
-                actionAdvice = '🚨 SEEK IMMEDIATE PROFESSIONAL MEDICAL ATTENTION.';
+                actionAdvice = '🚨 SEEK IMMEDIATE PROFESSIONAL MEDICAL ATTENTION. This could be serious.';
             } else if (data.triage_level.includes('MODERATE')) {
-                actionAdvice = '⚠️ Consult a doctor within 24-48 hours.';
+                actionAdvice = '⚠️ Consult a doctor within 24-48 hours for further evaluation.';
+            } else {
+                actionAdvice = '✅ Symptoms indicate a low risk condition. Consider self-care or consult a doctor if symptoms persist.';
             }
 
             return `
                 <p class="bot-header">
-                    ${riskTag} Diagnosis Complete
-                    <span class="text-xs font-normal">Confidence: ${primaryConfidence}%</span>
+                    <i class="fas fa-notes-medical mr-2"></i> Diagnosis Complete
+                    <span class="text-xs font-normal">${riskTag}</span>
                 </p>
                 
-                <p class="text-xs text-gray-500 mb-2 border-b pb-1">Current Analysed Symptoms: 
-                    <span class="font-medium text-gray-700">${finalQuery}</span>
+                <p class="text-xs text-gray-500 mb-3 border-b border-dashed border-border-light pb-2">
+                    Analysing: <span class="font-medium text-text-dark">${finalQuery}</span>
                 </p>
 
-                <h3 class="text-lg font-semibold text-gray-800">Primary Prediction (${primaryLang})</h3>
+                <h3 class="text-lg font-semibold text-gray-800">Primary Prediction <span class="text-sm text-gray-500">(${primaryLang})</span></h3>
                 <p class="text-base mt-1"><strong>Disease:</strong> <span class="text-xl font-bold text-red-700">${data.primary_disease}</span></p>
-                <p class="mt-3 font-semibold text-sm border-t pt-2">Recommended Action:</p>
-                <p class="text-base font-medium text-blue-600">${actionAdvice}</p>
+                <p class="mt-4 font-semibold text-base border-t border-dashed border-border-light pt-3">Recommended Action:</p>
+                <p class="text-base font-medium text-primary-dark-blue">${actionAdvice}</p>
 
-                <h3 class="text-lg font-semibold text-gray-800 mt-4 pt-3">Top Alternatives</h3>
+                <h3 class="text-lg font-semibold text-gray-800 mt-5 pt-3">Top Alternatives</h3>
                 ${top3Html}
             `;
         }
         
         // CRITICAL LOGIC: Checks if the input is likely a diagnostic symptom list
         function isSymptomQuery(query) {
-            const symptomKeywords = ['pain', 'fever', 'ache', 'sore', 'rash', 'cough', 'vomit', 'dizzy', 'chills', 'swelling', 'bleeding'];
-            const questionWords = ['what', 'how', 'why', 'who', 'is', 'are', 'do', 'can', 'should', 'precautions', 'treatment', 'exercise', 'advice'];
+            const symptomKeywords = ['pain', 'fever', 'ache', 'sore', 'rash', 'cough', 'vomit', 'dizzy', 'chills', 'swelling', 'bleeding', 'tired', 'nausea', 'headache', 'weakness', 'bruise'];
+            const questionWords = ['what', 'how', 'why', 'who', 'is', 'are', 'do', 'can', 'should', 'precautions', 'treatment', 'exercise', 'advice', 'guide', 'steps'];
             
             const lowerQuery = query.toLowerCase();
 
-            // 1. If it starts with a question word or contains key action words, treat it as a question.
-            if (questionWords.some(word => lowerQuery.includes(word + ' '))) {
-                return false;
+            // Prioritize question if it starts with a question word, even if it contains symptoms.
+            if (questionWords.some(word => lowerQuery.startsWith(word + ' '))) {
+                return false; // It's a question
             }
 
-            // 2. Otherwise, if it contains one or more symptom keywords, treat it as symptoms.
+            // Otherwise, if it contains one or more symptom keywords, treat it as symptoms.
             let symptomCount = 0;
             symptomKeywords.forEach(keyword => {
                 if (lowerQuery.includes(keyword)) {
@@ -308,7 +442,7 @@
                 }
             });
 
-            return symptomCount >= 1; 
+            return symptomCount >= 1; // If it has at least one symptom keyword, it's a symptom query.
         }
 
 
@@ -323,29 +457,36 @@
             analyzeButton.disabled = true;
             queryInput.disabled = true;
 
-            // 2. Append Loading Message
-            appendMessage('bot-message', '<p id="loading-dots" class="text-gray-500">Analyzing...</p>');
+            // 2. Append Loading Message (with animated dots)
+            appendMessage('bot-message', `
+                <p class="text-text-medium flex items-center">
+                    <i class="fas fa-spinner fa-pulse mr-2"></i> Analyzing <span id="loading-dots">
+                        <span style="--i:1;">.</span><span style="--i:2;">.</span><span style="--i:3;">.</span>
+                    </span>
+                </p>
+            `);
             
             let contextDiseaseValue = null;
-            let finalQuery = query;
+            let finalQueryForAPI = query; // This is what actually gets sent to the backend 'query' field
 
-            // --- CRITICAL MEMORY AND CONTEXT MANAGEMENT FIX ---
+            // --- CRITICAL MEMORY AND CONTEXT MANAGEMENT ---
             const isSymptomCheck = isSymptomQuery(query);
             
             if (isSymptomCheck) {
-                // CASE 1 & 2: Symptom input (CUMULATIVE DIAGNOSIS)
+                // User input is primarily symptoms. Add to cumulative history.
                 symptomHistory.push(query);
-                finalQuery = symptomHistory.join(', and also ');
-                lastPredictedDisease = null; // Clear disease memory before sending diagnosis
+                finalQueryForAPI = symptomHistory.join(', and also ');
+                lastPredictedDisease = null; // Clear disease memory before sending DIAGNOSIS query
 
             } else {
-                // CASE 3: Follow-up question (FAQ/Precautions)
-                finalQuery = query;
-                contextDiseaseValue = lastPredictedDisease; // Use the stored disease name
+                // User input is likely a question. Use specific query and potentially context.
+                finalQueryForAPI = query;
+                // If there's a last predicted disease, use it as context for FAQs
+                contextDiseaseValue = lastPredictedDisease; 
             }
             
-            // Final context sent to API
-            const finalContext = contextDiseaseValue || null;
+            // The context_disease sent to API is separate and only used for FAQ rephrasing
+            const contextToSend = contextDiseaseValue || null;
 
 
             try {
@@ -353,8 +494,8 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        query: finalQuery, 
-                        context_disease: finalContext
+                        query: finalQueryForAPI, 
+                        context_disease: contextToSend // Send the specific context for FAQ rephrasing
                     }), 
                 });
 
@@ -363,25 +504,28 @@
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    appendMessage('bot-message', `<p class="text-red-600">❌ API Error: Status ${response.status}. Check server logs for Python stack trace.</p>`);
+                    appendMessage('bot-message', `<p class="text-risk-high">❌ API Error: Status ${response.status}. Please check backend logs. <br>Details: ${errorText}</p>`);
                     return;
                 }
 
                 const data = await response.json();
                 
                 // 3. UPDATE CONTEXT MEMORY: 
-                if (!data.is_faq) {
-                     // Save the new primary prediction only if it was a symptom check
+                if (!data.is_faq && data.triage_level !== 'INFO_REQUEST') {
+                     // Only save the prediction if it was a symptom check (not an FAQ)
+                     // and also not an info request where the primary_disease holds the answer text
                      lastPredictedDisease = data.primary_disease;
                 }
+                // If it was an FAQ, the 'lastPredictedDisease' is preserved from the last diagnosis.
 
-                // 4. Append Bot Response
-                appendMessage('bot-message', renderBotResponse(data, finalQuery));
+                // 4. Append Bot Response (use the original query for display if it was a direct question, otherwise the cumulative)
+                const displayQuery = isSymptomCheck ? finalQueryForAPI : query;
+                appendMessage('bot-message', renderBotResponse(data, displayQuery));
 
             } catch (error) {
                 // Remove the loading message
                 if (historyDiv.lastChild) historyDiv.lastChild.remove();
-                appendMessage('bot-message', `<p class="text-red-600">❌ Network/Connection Error. Details: ${error.message}</p>`);
+                appendMessage('bot-message', `<p class="text-risk-high">❌ Network/Connection Error. Please ensure the backend is running. <br>Details: ${error.message}</p>`);
             } finally {
                 analyzeButton.disabled = false;
                 queryInput.disabled = false;
@@ -394,6 +538,11 @@
             if (e.key === 'Enter') {
                 sendQuery();
             }
+        });
+
+        // Initialize chat on load
+        document.addEventListener('DOMContentLoaded', () => {
+            queryInput.focus();
         });
     </script>
 </body>
