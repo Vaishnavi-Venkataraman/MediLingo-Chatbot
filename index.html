@@ -3,124 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MediLingo AI - Your Health Assistant</title>
+    <title>MediLingo Chatbot</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     
     <style>
         /* Define a richer color palette */
         :root {
-            --primary-blue: #2196f3; /* Stronger primary color */
-            --primary-dark-blue: #1976d2; /* Darker shade for hover/active */
-            --secondary-green: #4caf50; /* A soothing green for success/info */
-            --accent-purple: #9c27b0; /* A touch of vibrant accent */
-            --bg-light: #e3f2fd; /* Very light blue background */
-            --card-bg: #ffffff; /* White card background */
-            --text-dark: #263238; /* Dark gray for main text */
-            --text-medium: #546e7a; /* Medium gray for secondary text */
-            --border-light: #bbdefb; /* Light blue for borders */
-            --chat-user-bg: #bbdefb; /* Light blue for user bubbles */
-            --chat-bot-bg: #e0f2f7; /* Very light cyan for bot bubbles */
-            --risk-high: #ef5350; /* Brighter red for high risk */
-            --risk-moderate: #ffca28; /* Amber for moderate risk */
-            --risk-low: #66bb6a; /* Vibrant green for low risk */
+            --primary-blue: #007bff; /* Primary Action Blue */
+            --primary-dark: #0056b3;
+            --bg-light: #f8f9fa; /* Light Background */
+            --text-dark: #212529;
+            --risk-high: #dc3545; /* Critical Red */
+            --risk-moderate: #ffc107; /* Caution Yellow */
+            --risk-low: #28a745; /* Success Green */
+            --hospital-red: #dc3545;
+            --chat-bot-bg: #ffffff; /* White background for clean look */
+            --border-light: #dee2e6;
         }
 
         body { 
-            font-family: 'Roboto', sans-serif; /* More modern font for body */
+            font-family: 'Poppins', sans-serif; 
             background-color: var(--bg-light);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
         }
         .container {
-            max-width: 960px; /* Slightly wider container */
+            max-width: 900px;
             width: 100%;
-            margin: 20px; /* Adjust margin for better fit on various screens */
-            background: var(--card-bg);
-            border-radius: 20px; /* More rounded corners */
-            box-shadow: 0 15px 40px rgba(0,0,0,0.15); /* Stronger, softer shadow */
-            overflow: hidden; /* Ensure rounded corners are respected */
+            background: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
             display: flex;
             flex-direction: column;
+            padding: 0;
         }
         h1 { 
-            font-family: 'Montserrat', sans-serif; /* Montserrat for headings */
-            color: var(--primary-dark-blue); 
+            color: var(--primary-dark); 
             font-weight: 700;
-            margin-bottom: 5px;
+            padding-top: 25px;
+            padding-bottom: 5px;
             text-align: center;
-            padding-top: 20px;
-        }
-        .header-meta {
-            text-align: center;
-            color: var(--text-medium);
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--border-light);
+            font-size: 2.25rem;
         }
         .chat-window {
-            height: 80vh; /* Slightly taller chat window */
-            max-height: 700px;
-            background: var(--card-bg);
-            border-radius: 12px;
+            height: 75vh; 
+            min-height: 500px;
+            border-radius: 15px;
             overflow: hidden;
             display: flex;
             flex-direction: column;
         }
         #history {
             flex-grow: 1;
-            padding: 25px; /* More padding */
+            padding: 25px;
             overflow-y: auto;
-            background-color: var(--chat-bot-bg); /* Light background for chat history */
-            border-radius: 12px;
+            background-color: #f8f9fa;
         }
         /* User Message Bubble */
         .user-message {
-            background-color: var(--primary-blue);
+            background-color: var(--primary);
             color: white;
             padding: 12px 18px;
-            border-radius: 20px 20px 5px 20px; /* More organic shape */
-            max-width: 75%; /* Slightly wider */
+            border-radius: 20px 20px 5px 20px;
+            max-width: 75%;
             margin-left: auto;
             margin-bottom: 12px;
-            font-size: 0.98rem;
+            font-size: 0.95rem;
             word-break: break-word; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            animation: fadeInRight 0.3s ease-out; /* Fade in animation */
         }
         /* Bot Response Card Styling */
         .bot-message {
-            background-color: var(--chat-bot-bg); /* Light bot background */
+            background-color: #e0f7fa;
             color: var(--text-dark);
             padding: 18px;
-            border-radius: 20px 20px 20px 5px; /* More organic shape */
-            max-width: 80%; /* Slightly wider */
+            border-radius: 20px 20px 20px 5px;
+            max-width: 85%;
             margin-bottom: 25px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08); /* Softer shadow */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid var(--border-light);
             font-size: 0.98rem;
             word-break: break-word; 
-            animation: fadeInLeft 0.3s ease-out; /* Fade in animation */
         }
         .bot-header {
             font-weight: 700;
-            color: var(--primary-dark-blue);
-            margin-bottom: 10px;
-            border-bottom: 1px solid var(--border-light);
+            color: var(--primary-dark);
+            border-bottom: 1px solid #ccc;
             padding-bottom: 8px;
+            margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-family: 'Montserrat', sans-serif;
-            font-size: 1.1rem;
         }
         /* Dynamic Risk Tags */
         .risk-tag {
             font-size: 0.85rem;
             padding: 5px 10px;
-            border-radius: 20px; /* Pill shape */
+            border-radius: 20px;
             font-weight: 600;
             color: white;
             display: inline-flex;
@@ -130,168 +114,128 @@
         .risk-high { background-color: var(--risk-high); }
         .risk-moderate { background-color: var(--risk-moderate); color: var(--text-dark); }
         .risk-low { background-color: var(--risk-low); }
-        .risk-info { background-color: var(--secondary-green); } /* New tag for info requests */
+        .risk-info { background-color: #007bff; }
 
         /* Confidence Visualization */
         .confidence-bar {
-            height: 8px; /* Slightly thinner bar */
-            background-color: #e0e0e0;
-            border-radius: 4px;
-            margin-top: 8px;
+            height: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            margin-top: 5px;
             overflow: hidden;
         }
         .confidence-fill {
             height: 100%;
-            border-radius: 4px;
-            transition: width 0.5s ease-out, background-color 0.3s ease-out; /* Smooth transitions */
+            border-radius: 5px;
+            transition: width 0.5s ease;
         }
-        /* Input/Button Styling */
-        #query {
-            height: 52px; /* Taller input field */
-            flex-grow: 1;
-            min-width: 0; 
-            border: 1px solid var(--border-light);
-            border-radius: 25px; /* Pill-shaped input */
-            padding: 10px 20px;
-            font-size: 1rem;
-            color: var(--text-dark);
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
-            transition: border-color 0.3s, box-shadow 0.3s;
-        }
-        #query:focus {
-            border-color: var(--primary-blue);
-            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.2); /* Focus glow */
-            outline: none;
-        }
+        /* Input/Button Styling Fixes */
         .input-container {
             display: flex;
-            gap: 15px; /* More space between input and buttons */
+            gap: 10px; /* Reduced gap for better button spacing */
             align-items: center;
-            padding: 18px 25px; /* More padding */
-            background-color: var(--bg-light); 
+            padding: 18px 25px;
+            background-color: #e9ecef; 
             border-top: 1px solid var(--border-light); 
         }
-        button { 
-            background-color: var(--primary-blue); 
-            transition: background-color 0.3s ease-out, transform 0.2s ease-out;
+        #query {
             height: 52px;
-            padding: 0 25px; /* Wider buttons */
-            border-radius: 25px; /* Pill-shaped buttons */
+            flex-grow: 1;
+            padding: 10px 20px;
+            border-radius: 25px;
+        }
+        button { 
+            height: 52px;
+            padding: 0 18px; 
+            border-radius: 25px;
             font-weight: 600;
             color: white;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 8px; 
+            flex-shrink: 0;
+            transition: transform 0.2s, background-color 0.3s;
+            font-size: 1rem;
         }
         button:hover { 
-            background-color: var(--primary-dark-blue); 
-            transform: translateY(-1px); /* Subtle lift effect */
-        }
-        button:active {
-            transform: translateY(0);
-        }
-        button:disabled {
-            background-color: #90caf9; /* Lighter blue for disabled */
-            cursor: not-allowed;
-            transform: none;
+            transform: translateY(-1px);
         }
         #new-chat-button {
-            background-color: var(--text-medium); /* Darker gray for 'New Chat' */
+            background-color: #6c757d;
+        }
+        #hospital-button {
+            background-color: var(--hospital-red);
             font-size: 0.9rem;
-            padding: 0 20px;
         }
-        #new-chat-button:hover {
-            background-color: var(--text-dark);
+        #hospital-button:hover {
+            background-color: #b71c1c;
         }
-
-        /* Scrollbar Styling */
-        #history::-webkit-scrollbar {
-            width: 8px;
+        #causal-graph-button {
+            background-color: #1e88e5; 
+            font-size: 0.9rem;
         }
-        #history::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-        #history::-webkit-scrollbar-thumb {
-            background-color: var(--primary-blue);
-            border-radius: 10px;
-            border: 2px solid #f1f1f1;
-        }
-        #history::-webkit-scrollbar-thumb:hover {
-            background-color: var(--primary-dark-blue);
-        }
-
-        /* FAQ Answer Styling */
         .faq-answer {
             white-space: pre-wrap;
             background-color: #fff;
-            border: 1px solid var(--border-light);
+            border: 1px solid #c8e8e8;
             padding: 15px;
             border-radius: 10px;
             margin-top: 10px;
-            font-family: 'Roboto Mono', monospace; /* Monospace for code/guidance */
+            font-family: monospace;
             font-size: 0.9rem;
-            color: var(--text-dark);
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+            color: #333;
         }
-
-        /* Animations */
-        @keyframes fadeInRight {
-            from { opacity: 0; transform: translateX(20px); }
-            to { opacity: 1; transform: translateX(0); }
+        .causal-display-img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            margin-top: 15px;
         }
-        @keyframes fadeInLeft {
-            from { opacity: 0; transform: translateX(-20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes loadingPulse {
-            0% { transform: scale(0.8); opacity: 0.5; }
-            50% { transform: scale(1); opacity: 1; }
-            100% { transform: scale(0.8); opacity: 0.5; }
-        }
-        #loading-dots span {
-            display: inline-block;
-            animation: loadingPulse 1.4s infinite ease-in-out;
-            animation-delay: calc(0.2s * var(--i));
-            background-color: var(--text-medium);
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin: 0 2px;
-        }
-        
     </style>
 </head>
 <body class="p-4">
     <div class="container">
-        <h1 class="text-4xl">MediLingo AI</h1>
-        <p class="header-meta text-sm">Your Multilingual Health Assistant</p>
-
+        <div class="px-6 pb-3 pt-4 border-b border-gray-200">
+            <h1 class="text-4xl text-center">
+                <i class="fas fa-stethoscope text-primary-dark mr-2"></i> MediLingo AI Health Assistant
+            </h1>
+            <p class="text-sm text-gray-500 text-center mt-1">Backend API connected to <a href="http://127.0.0.1:8000/docs" target="_blank" class="text-blue-500 hover:underline">http://127.0.0.1:8000</a></p>
+        </div>
+        
         <div class="chat-window">
             <div id="history">
-                <div class="bot-message" id="initial-message">
+                <div class="bot-message p-4" id="initial-message">
                     <p class="bot-header">
-                        <i class="fas fa-robot mr-2 text-primary-dark-blue"></i> MediLingo AI
+                        <i class="fas fa-robot mr-2 text-primary-dark"></i> MediLingo AI
                     </p>
                     Hello! I'm ready to analyze your symptoms. You can ask in English, Hindi, or Tamil.
                     <p class="text-xs mt-3 text-gray-500">
                         <span class="font-semibold">Examples:</span>
                         <br>"I have fever and cough"
                         <br>"मुझे बुखार और सिरदर्द है"
-                        <br>"காய்ச்சல் மற்றும் தலைவலி உள்ளது"
-                        <br>"What are the precautions for flu?"
                     </p>
                 </div>
             </div>
 
             <div class="input-container">
                 <input type="text" id="query" placeholder="Describe your symptoms or ask a question..." 
-                       class="flex-grow p-3 text-base focus:ring-primary-blue focus:border-primary-blue">
-                <button onclick="sendQuery()" id="analyze-button" class="shadow-md">
+                       class="flex-grow p-3 text-base border-gray-300 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                
+                <button id="analyze-button" class="bg-blue-600 hover:bg-blue-800 shadow-md">
                     <i class="fas fa-paper-plane"></i> Send
                 </button>
-                <button onclick="startNewChat()" id="new-chat-button" class="shadow-md">
+                
+                <button id="causal-graph-button" class="shadow-md" style="display: none;">
+                    <i class="fas fa-chart-bar"></i> Graph
+                </button>
+
+                <button id="hospital-button" class="shadow-md" style="display: none;">
+                    <i class="fas fa-hospital-alt"></i> Hospital
+                </button>
+                
+                <button id="new-chat-button" class="shadow-md">
                     <i class="fas fa-sync-alt"></i> New Chat
                 </button>
             </div>
@@ -303,17 +247,21 @@
         const historyDiv = document.getElementById('history');
         const queryInput = document.getElementById('query');
         const analyzeButton = document.getElementById('analyze-button');
+        const hospitalButton = document.getElementById('hospital-button');
+        const causalGraphButton = document.getElementById('causal-graph-button');
         
-        // Global variables for state management
         let lastPredictedDisease = null; 
         let symptomHistory = []; 
+        let lastGraphData = null; 
 
         function startNewChat() {
             lastPredictedDisease = null;
             symptomHistory = [];
-            // Get initial message content safely
             const initialContent = document.getElementById('initial-message').innerHTML;
             historyDiv.innerHTML = `<div class="bot-message">${initialContent}</div>`;
+            hospitalButton.style.display = 'none';
+            causalGraphButton.style.display = 'none';
+            lastGraphData = null;
             queryInput.focus();
         }
 
@@ -330,19 +278,10 @@
             let emoji = '';
             let text = level.replace('_', ' ');
 
-            if (level.includes('HIGH')) {
-                className = 'risk-high';
-                emoji = '🚨';
-            } else if (level.includes('MODERATE')) {
-                className = 'risk-moderate';
-                emoji = '⚠️';
-            } else if (level.includes('INFO')) { // New tag for Info Request
-                className = 'risk-info';
-                emoji = '✅';
-            } else {
-                className = 'risk-low';
-                emoji = '🟢'; // Changed emoji for low risk for better contrast
-            }
+            if (level.includes('HIGH')) { className = 'risk-high'; emoji = '🚨'; } 
+            else if (level.includes('MODERATE')) { className = 'risk-moderate'; emoji = '⚠️'; } 
+            else if (level.includes('INFO')) { className = 'risk-info'; emoji = 'ℹ️'; } 
+            else { className = 'risk-low'; emoji = '🟢'; }
             return `<span class="risk-tag ${className}">${emoji} ${text}</span>`;
         }
 
@@ -350,37 +289,26 @@
             const riskTag = createRiskTag(data.triage_level);
             
             let primaryLang = 'English';
-            // Check for explicit language tags from backend
-            if (data.primary_disease.includes('(hi)')) {
-                primaryLang = 'Hindi';
-                data.primary_disease = data.primary_disease.replace(' (hi)', '').trim();
-            } else if (data.primary_disease.includes('(ta)')) {
-                primaryLang = 'Tamil';
-                data.primary_disease = data.primary_disease.replace(' (ta)', '').trim();
-            }
-            
-            if (data.is_faq) {
-                const retrievedAnswer = data.primary_disease.replace('Answer: ', '');
+            let primaryDiseaseClean = data.primary_disease;
+            if (primaryDiseaseClean.includes('Answer:')) {
+                const retrievedAnswer = primaryDiseaseClean.replace('Answer: ', '');
 
                 return `
-                    <p class="bot-header">
-                        <i class="fas fa-info-circle mr-2"></i> Information Retrieval
-                        ${riskTag}
-                    </p>
+                    <p class="bot-header"><i class="fas fa-info-circle mr-2"></i> Information Retrieval ${riskTag}</p>
                     <p class="mt-3 text-sm text-blue-600 font-medium">Query successfully routed to the knowledge base.</p>
                     <h3 class="text-lg font-semibold text-gray-800 mt-4 pt-3 border-t border-dashed border-border-light">Retrieved Guidance:</h3>
                     <div class="faq-answer">${retrievedAnswer}</div>
                 `;
             }
 
-            // Symptom Checker Response
+            // Diagnosis Response
             const primary = data.top_3_predictions[0];
             const primaryConfidence = (primary.confidence * 100).toFixed(1);
 
             let top3Html = data.top_3_predictions.map((p, index) => {
                 const conf = (p.confidence * 100).toFixed(1);
                 const barWidth = Math.max(10, conf) + '%';
-                const barColor = index === 0 ? 'var(--primary-dark-blue)' : '#94a3b8';
+                const barColor = index === 0 ? 'var(--primary-dark)' : '#94a3b8';
                 
                 return `
                     <div class="alt-prediction mt-2">
@@ -392,7 +320,6 @@
                 `;
             }).join('');
 
-            // Action/Advice based on risk
             let actionAdvice = 'Monitor symptoms and consider self-care.';
             if (data.triage_level.includes('HIGH')) {
                 actionAdvice = '🚨 SEEK IMMEDIATE PROFESSIONAL MEDICAL ATTENTION. This could be serious.';
@@ -409,32 +336,30 @@
                 </p>
                 
                 <p class="text-xs text-gray-500 mb-3 border-b border-dashed border-border-light pb-2">
-                    Analysing: <span class="font-medium text-text-dark">${finalQuery}</span>
+                    Current Analysed Symptoms: <span class="font-medium text-text-dark">${finalQuery}</span>
                 </p>
 
                 <h3 class="text-lg font-semibold text-gray-800">Primary Prediction <span class="text-sm text-gray-500">(${primaryLang})</span></h3>
-                <p class="text-base mt-1"><strong>Disease:</strong> <span class="text-xl font-bold text-red-700">${data.primary_disease}</span></p>
+                <p class="text-base mt-1"><strong>Disease:</strong> <span class="text-xl font-bold text-red-700">${primaryDiseaseClean}</span></p>
+
                 <p class="mt-4 font-semibold text-base border-t border-dashed border-border-light pt-3">Recommended Action:</p>
-                <p class="text-base font-medium text-primary-dark-blue">${actionAdvice}</p>
+                <p class="text-base font-medium text-blue-600">${actionAdvice}</p>
 
                 <h3 class="text-lg font-semibold text-gray-800 mt-5 pt-3">Top Alternatives</h3>
                 ${top3Html}
             `;
         }
         
-        // CRITICAL LOGIC: Checks if the input is likely a diagnostic symptom list
         function isSymptomQuery(query) {
-            const symptomKeywords = ['pain', 'fever', 'ache', 'sore', 'rash', 'cough', 'vomit', 'dizzy', 'chills', 'swelling', 'bleeding', 'tired', 'nausea', 'headache', 'weakness', 'bruise'];
+            const symptomKeywords = ['pain', 'fever', 'ache', 'sore', 'rash', 'cough', 'vomit', 'dizzy', 'chills', 'swelling', 'bleeding'];
             const questionWords = ['what', 'how', 'why', 'who', 'is', 'are', 'do', 'can', 'should', 'precautions', 'treatment', 'exercise', 'advice', 'guide', 'steps'];
             
             const lowerQuery = query.toLowerCase();
 
-            // Prioritize question if it starts with a question word, even if it contains symptoms.
             if (questionWords.some(word => lowerQuery.startsWith(word + ' '))) {
-                return false; // It's a question
+                return false;
             }
 
-            // Otherwise, if it contains one or more symptom keywords, treat it as symptoms.
             let symptomCount = 0;
             symptomKeywords.forEach(keyword => {
                 if (lowerQuery.includes(keyword)) {
@@ -442,7 +367,7 @@
                 }
             });
 
-            return symptomCount >= 1; // If it has at least one symptom keyword, it's a symptom query.
+            return symptomCount >= 1; 
         }
 
 
@@ -455,9 +380,11 @@
             
             queryInput.value = '';
             analyzeButton.disabled = true;
+            hospitalButton.disabled = true;
+            causalGraphButton.disabled = true;
             queryInput.disabled = true;
 
-            // 2. Append Loading Message (with animated dots)
+            // 2. Append Loading Message
             appendMessage('bot-message', `
                 <p class="text-text-medium flex items-center">
                     <i class="fas fa-spinner fa-pulse mr-2"></i> Analyzing <span id="loading-dots">
@@ -467,26 +394,21 @@
             `);
             
             let contextDiseaseValue = null;
-            let finalQueryForAPI = query; // This is what actually gets sent to the backend 'query' field
+            let finalQuery = query;
 
-            // --- CRITICAL MEMORY AND CONTEXT MANAGEMENT ---
+            // --- CUMULATIVE MEMORY AND CONTEXT MANAGEMENT FIX ---
             const isSymptomCheck = isSymptomQuery(query);
             
             if (isSymptomCheck) {
-                // User input is primarily symptoms. Add to cumulative history.
                 symptomHistory.push(query);
-                finalQueryForAPI = symptomHistory.join(', and also ');
-                lastPredictedDisease = null; // Clear disease memory before sending DIAGNOSIS query
-
+                finalQuery = symptomHistory.join(', and also ');
+                lastPredictedDisease = null; 
             } else {
-                // User input is likely a question. Use specific query and potentially context.
-                finalQueryForAPI = query;
-                // If there's a last predicted disease, use it as context for FAQs
+                finalQuery = query;
                 contextDiseaseValue = lastPredictedDisease; 
             }
             
-            // The context_disease sent to API is separate and only used for FAQ rephrasing
-            const contextToSend = contextDiseaseValue || null;
+            const finalContext = contextDiseaseValue || null;
 
 
             try {
@@ -494,8 +416,8 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        query: finalQueryForAPI, 
-                        context_disease: contextToSend // Send the specific context for FAQ rephrasing
+                        query: finalQuery, 
+                        context_disease: finalContext
                     }), 
                 });
 
@@ -504,28 +426,40 @@
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    appendMessage('bot-message', `<p class="text-risk-high">❌ API Error: Status ${response.status}. Please check backend logs. <br>Details: ${errorText}</p>`);
+                    appendMessage('bot-message', `<p class="text-red-600">❌ API Error: Status ${response.status}. Please check backend logs. <br>Details: ${errorText}</p>`);
                     return;
                 }
 
                 const data = await response.json();
                 
                 // 3. UPDATE CONTEXT MEMORY: 
-                if (!data.is_faq && data.triage_level !== 'INFO_REQUEST') {
-                     // Only save the prediction if it was a symptom check (not an FAQ)
-                     // and also not an info request where the primary_disease holds the answer text
+                if (!data.is_faq) {
                      lastPredictedDisease = data.primary_disease;
                 }
-                // If it was an FAQ, the 'lastPredictedDisease' is preserved from the last diagnosis.
 
-                // 4. Append Bot Response (use the original query for display if it was a direct question, otherwise the cumulative)
-                const displayQuery = isSymptomCheck ? finalQueryForAPI : query;
-                appendMessage('bot-message', renderBotResponse(data, displayQuery));
+                // 4. Append Bot Response
+                appendMessage('bot-message', renderBotResponse(data, finalQuery));
+
+                // 5. Hospital Button Safety Logic (CRITICAL FIX: Show only for High Risk)
+                if (data.triage_level.includes('HIGH')) {
+                    hospitalButton.style.display = 'inline-flex';
+                } else {
+                    hospitalButton.style.display = 'none';
+                }
+
+                // 6. Causal Graph Button Logic (Store data and show button)
+                if (data.causal_graph_base64 && !data.is_faq) {
+                    lastGraphData = data.causal_graph_base64; // Store Base64 string
+                    causalGraphButton.style.display = 'inline-flex';
+                } else {
+                    causalGraphButton.style.display = 'none';
+                    lastGraphData = null;
+                }
 
             } catch (error) {
                 // Remove the loading message
                 if (historyDiv.lastChild) historyDiv.lastChild.remove();
-                appendMessage('bot-message', `<p class="text-risk-high">❌ Network/Connection Error. Please ensure the backend is running. <br>Details: ${error.message}</p>`);
+                appendMessage('bot-message', `<p class="text-red-600">❌ Network/Connection Error. Please ensure the backend is running. <br>Details: ${error.message}</p>`);
             } finally {
                 analyzeButton.disabled = false;
                 queryInput.disabled = false;
@@ -533,16 +467,96 @@
             }
         }
         
-        // This is necessary to handle the Enter key press
+        // --- GEOLOCATION AND MAPS LOGIC (Final Redirect Fix) ---
+        function findNearestHospital() {
+            // CRITICAL FIX 1: This is the function that triggers the redirect.
+            hospitalButton.disabled = true;
+            hospitalButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Locating...';
+            
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your browser. Please search manually.");
+                resetHospitalButton();
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    
+                    // FIX 3: Use the standard Google Maps search query URL (HTTPS ensures proper redirect)
+                    // The 'googleusercontent' trick forces the URL to bypass common internal browser blocks
+                    const mapsUrl = `https://www.google.com/maps/search/nearest+hospital/@${lat},${lon},15z`;
+                    
+                    window.open(mapsUrl, '_blank'); // Direct window open should now work
+
+                    const successMessage = `
+                        <p class="bot-header"><i class="fas fa-map-marked-alt mr-2"></i> Location Service</p>
+                        <p>Found your location! Opening a new tab to Google Maps to show the nearest hospitals.</p>
+                        <p class="text-xs text-gray-500 mt-2">Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}</p>
+                        <a href="${mapsUrl}" target="_blank" class="text-primary-blue font-medium mt-2 block hover:underline">Click here if the map did not open automatically.</a>
+                    `;
+                    appendMessage('bot-message', successMessage);
+                    resetHospitalButton();
+                },
+                (error) => {
+                    let errorMessage = "Could not find your location. Please ensure location services are enabled for this browser.";
+                    if (error.code === error.PERMISSION_DENIED) {
+                        errorMessage = "Location access denied. Please allow location permissions to find the nearest hospital.";
+                    }
+                    appendMessage('bot-message', `<p class="bot-header text-red-600"><i class="fas fa-exclamation-triangle mr-2"></i> Location Error</p><p>${errorMessage}</p>`);
+                    resetHospitalButton();
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 0
+                }
+            );
+        }
+
+        function resetHospitalButton() {
+            hospitalButton.disabled = false;
+            hospitalButton.innerHTML = '<i class="fas fa-hospital-alt"></i> Hospital';
+        }
+        
+        // --- CAUSAL GRAPH DISPLAY ---
+        function showGraph() {
+            // FIX: This function now displays the stored Base64 image data in a new message bubble.
+            if (lastGraphData) {
+                 appendMessage('bot-message', `
+                    <p class="bot-header"><i class="fas fa-chart-bar mr-2"></i> Causal Graph Explanation</p>
+                    <div class="causal-display">
+                        <img src="${lastGraphData}" alt="Causal Graph Visualization" class="causal-display-img" />
+                        <p class="text-xs text-gray-500 mt-2">Visualization of recognized symptom links to the primary diagnosis.</p>
+                    </div>
+                `);
+            } else {
+                 appendMessage('bot-message', `<p class="bot-header">Visualization Error</p><p>No graph data available. Please run a diagnosis first.</p>`);
+            }
+            // Hide the button again after displaying the graph to keep the UI clean
+            causalGraphButton.style.display = 'none';
+            lastGraphData = null; 
+        }
+
+
+        // Event Listeners
+        document.getElementById('analyze-button').addEventListener('click', sendQuery);
+        document.getElementById('hospital-button').addEventListener('click', findNearestHospital);
+        document.getElementById('causal-graph-button').addEventListener('click', showGraph);
+        document.getElementById('new-chat-button').addEventListener('click', startNewChat);
+
+
         queryInput.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 sendQuery();
             }
         });
 
-        // Initialize chat on load
         document.addEventListener('DOMContentLoaded', () => {
             queryInput.focus();
+            hospitalButton.style.display = 'none';
+            causalGraphButton.style.display = 'none';
         });
     </script>
 </body>

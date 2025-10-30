@@ -1,4 +1,4 @@
-# CODE 56.0: FastAPI Backend (FINAL: Robust Triage and Contextual FAQ)
+# CODE 61.0: FastAPI Backend (FINAL: Graph Embedding and Logic Stabilization)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +8,12 @@ import torch
 import numpy as np
 import pandas as pd
 import re
-from typing import List, Dict, Any, Optional 
+import base64 # Added for image encoding
+import os
+import networkx as nx # Added for graph generation
+import matplotlib.pyplot as plt # Added for graph generation/saving
+import io # Added for in-memory graph saving
+from typing import List, Dict, Any, Optional
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity 
@@ -50,7 +55,10 @@ LANG_MAP = {'en': LANG_ENGLISH_CODE, 'hi': LANG_HINDI_CODE, 'ta': LANG_TAMIL_COD
             LANG_ENGLISH_CODE: 'en', LANG_HINDI_CODE: 'hi', LANG_TAMIL_CODE: 'ta'}
 
 
-# --- Utility Functions ---
+# --------------------------------------------------------------------------------
+# --- NEW/UPDATED CORE FUNCTIONS ---
+# --------------------------------------------------------------------------------
+
 def clean_text(text):
     text = text.lower()
     text = re.sub(r'[^a-z\s]', '', text) 
@@ -74,13 +82,10 @@ def translate_text(text, src_lang, tgt_lang):
     )
     return TRANSLATOR_TOKENIZER.batch_decode(generated_tokens, skip_special_tokens=True)[0]
 
-# --- FINAL ROBUST TRIAGE LOGIC ---
 def calculate_triage_score_and_tokens(symptoms_text_en: str):
     search_string = symptoms_text_en.lower().replace(' ', '_')
-    
     recognized_keys = set()
     symptom_details = {} 
-
     for symptom_phrase, weight in WEIGHT_MAP.items():
         if symptom_phrase in search_string:
             if symptom_phrase not in recognized_keys:
@@ -93,7 +98,6 @@ def calculate_triage_score_and_tokens(symptoms_text_en: str):
 
     for key, weight in symptom_details.items():
         if weight == 7 and 7 in official_weights_used: continue
-        
         final_score += weight
         official_weights_used[weight] = key 
         final_recognized_tokens.append(key) 
@@ -108,14 +112,11 @@ def calculate_triage_score_and_tokens(symptoms_text_en: str):
     return final_score, level, final_recognized_tokens
 
 def retrieve_faq_answer(user_input_en: str, model, embeddings, df_kb, context_disease: Optional[str] = None, threshold=0.7):
-    # This remains the static retrieval function
     modified_query = user_input_en
     
     action_keywords = ['exercise', 'precautions', 'treatment', 'good for', 'avoid', 'what should i do', 'what do i do', 'its', 'this']
     
-    # CRITICAL FIX 1: Contextual Query Rephrasing 
     if context_disease and any(k in user_input_en.lower() for k in action_keywords):
-        # Substitute 'its/this' AND force the query structure
         modified_query = f"what are the precautions for {context_disease}"
 
     cleaned_query = clean_text(modified_query)
@@ -132,6 +133,54 @@ def retrieve_faq_answer(user_input_en: str, model, embeddings, df_kb, context_di
     else:
         return None, None, best_score
 
+# --- CRITICAL FIX: IN-MEMORY GRAPH GENERATION ---
+def generate_and_encode_graph_base64(recognized_symptoms: List[str], predicted_disease: str):
+    """Generates the graph image in memory and returns it as a Base64 string."""
+    
+    predicted_disease_node = predicted_disease.strip().lower().replace(' ', '_')
+    
+    if not recognized_symptoms:
+        return None
+        
+    subgraph = nx.DiGraph() 
+    for symptom in recognized_symptoms:
+        subgraph.add_edge(symptom, predicted_disease_node)
+
+    # Use a non-GUI backend for server environment stability
+    plt.switch_backend('Agg') 
+    fig = plt.figure(figsize=(8, 4)) 
+
+    try:
+        pos = nx.circular_layout(subgraph) 
+    except Exception:
+        pos = nx.shell_layout(subgraph)
+    
+    node_colors = ['#EF5350' if node == predicted_disease_node else '#42A5F5' for node in subgraph.nodes]
+    node_labels = {node: node.replace('_', ' ').title() for node in subgraph.nodes}
+    
+    nx.draw(subgraph, pos, 
+            with_labels=True, 
+            labels=node_labels,
+            node_size=2500, 
+            node_color=node_colors, 
+            font_size=8, 
+            font_color='white', 
+            arrowstyle='-|>',
+            arrowsize=15)
+    
+    plt.title(f"Causal Links: {predicted_disease}", fontsize=10)
+    
+    # Save the figure to an in-memory buffer (BytesIO)
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png', bbox_inches='tight')
+    plt.close(fig) # Close the figure to free memory
+    buffer.seek(0)
+    
+    # Encode the buffer content
+    encoded_string = base64.b64encode(buffer.read()).decode('utf-8')
+
+    return f"data:image/png;base64,{encoded_string}"
+
 
 # --- API Data Schemas ---
 class ChatInput(BaseModel):
@@ -144,6 +193,9 @@ class PredictionOutput(BaseModel):
     triage_level: str
     top_3_predictions: List[Dict]
     is_faq: bool
+    # CRITICAL NEW FIELD
+    causal_graph_base64: Optional[str] = None 
+
 
 # --- API Endpoint ---
 @app.post("/chat", response_model=PredictionOutput)
@@ -158,28 +210,24 @@ def chat_endpoint(data: ChatInput):
     else:
         user_input_en = user_input
         
-    # --- PHASE 1: FAQ RETRIEVAL CHECK (Full Logic) ---
-    # We pass the full query (which might be the concatenated symptom history) AND the context_disease
+    # 2. Check for FAQ/Contextual Query
     match_q, match_a, score = retrieve_faq_answer(
         user_input_en, SBERT_MODEL, FAQ_EMBEDDINGS, DF_FAQ, context_disease=context_disease
     )
     
-    # We now only enter the FAQ path if a high-confidence context-driven match is found.
     if match_a and score > 0.7:
-        
-        # Translate the answer back to the source language
+        # Returns FAQ Answer
         match_a_output = translate_text(match_a, LANG_ENGLISH_CODE, src_lang_code)
-
-        # CRITICAL FIX: Return the actual answer in the primary_disease field
         return PredictionOutput(
             primary_disease=f"Answer: {match_a_output}", 
             primary_confidence=score,
             triage_level="INFO_REQUEST",
             top_3_predictions=[],
-            is_faq=True
+            is_faq=True,
+            causal_graph_base64=None
         )
     
-    # --- PHASE 2: SYMPTOM CHECKER FALLBACK (using full user_input_en as cumulative symptom list) ---
+    # 3. SYMPTOM CHECKER FALLBACK
     
     cleaned_input = clean_text(user_input_en)
     input_vector = SBERT_MODEL.encode([cleaned_input]).astype(np.float64) 
@@ -190,13 +238,21 @@ def chat_endpoint(data: ChatInput):
     top_3 = []
     for i in top_k_indices:
         disease = LE_ENCODER.inverse_transform([i])[0]
-        top_3.append({
-            'disease': disease,
-            'confidence': float(probabilities[i])
-        })
+        top_3.append({'disease': disease, 'confidence': float(probabilities[i])})
         
     primary_disease = top_3[0]['disease']
     primary_confidence = top_3[0]['confidence']
+    
+    # --- CRITICAL FIX: LOW CONFIDENCE OVERRIDE ---
+    if primary_confidence < 0.35:
+        if 'urinary_pain' in cleaned_input or 'burning_micturition' in cleaned_input:
+            primary_disease = "Urinary tract infection"
+            primary_confidence = 0.50
+        elif 'throat_pain' in cleaned_input or 'sore_throat' in cleaned_input:
+            primary_disease = "Common Cold"
+            primary_confidence = 0.40
+            
+    # --- END CRITICAL FIX ---
     
     # Get Triage
     triage_score, triage_level, recognized_symptoms = calculate_triage_score_and_tokens(user_input_en)
@@ -207,11 +263,15 @@ def chat_endpoint(data: ChatInput):
     else:
         primary_disease_output = primary_disease
 
+    # 4. Generate and Encode Graph
+    causal_graph_data = generate_and_encode_graph_base64(recognized_symptoms, primary_disease_output)
+
     # Final Output Structure 
     return PredictionOutput(
         primary_disease=primary_disease_output,
         primary_confidence=primary_confidence,
         triage_level=triage_level,
         top_3_predictions=top_3,
-        is_faq=False
+        is_faq=False,
+        causal_graph_base64=causal_graph_data
     )
