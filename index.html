@@ -11,15 +11,15 @@
     <style>
         /* Define a richer color palette */
         :root {
-            --primary-blue: #007bff; /* Primary Action Blue */
+            --primary-blue: #007bff;
             --primary-dark: #0056b3;
-            --bg-light: #f8f9fa; /* Light Background */
+            --bg-light: #f8f9fa;
             --text-dark: #212529;
-            --risk-high: #dc3545; /* Critical Red */
-            --risk-moderate: #ffc107; /* Caution Yellow */
-            --risk-low: #28a745; /* Success Green */
+            --risk-high: #dc3545;
+            --risk-moderate: #ffc107;
+            --risk-low: #28a745;
             --hospital-red: #dc3545;
-            --chat-bot-bg: #ffffff; /* White background for clean look */
+            --chat-bot-bg: #ffffff;
             --border-light: #dee2e6;
         }
 
@@ -65,7 +65,6 @@
             overflow-y: auto;
             background-color: #f8f9fa;
         }
-        /* User Message Bubble */
         .user-message {
             background-color: var(--primary);
             color: white;
@@ -77,7 +76,6 @@
             font-size: 0.95rem;
             word-break: break-word; 
         }
-        /* Bot Response Card Styling */
         .bot-message {
             background-color: #e0f7fa;
             color: var(--text-dark);
@@ -100,7 +98,6 @@
             justify-content: space-between;
             align-items: center;
         }
-        /* Dynamic Risk Tags */
         .risk-tag {
             font-size: 0.85rem;
             padding: 5px 10px;
@@ -116,7 +113,6 @@
         .risk-low { background-color: var(--risk-low); }
         .risk-info { background-color: #007bff; }
 
-        /* Confidence Visualization */
         .confidence-bar {
             height: 10px;
             background-color: #f0f0f0;
@@ -132,7 +128,7 @@
         /* Input/Button Styling Fixes */
         .input-container {
             display: flex;
-            gap: 10px; /* Reduced gap for better button spacing */
+            gap: 10px;
             align-items: center;
             padding: 18px 25px;
             background-color: #e9ecef; 
@@ -178,7 +174,7 @@
         .faq-answer {
             white-space: pre-wrap;
             background-color: #fff;
-            border: 1px solid #c8e8e8;
+            border: 1px solid #c8e8c8;
             padding: 15px;
             border-radius: 10px;
             margin-top: 10px;
@@ -329,6 +325,14 @@
                 actionAdvice = '✅ Symptoms indicate a low risk condition. Consider self-care or consult a doctor if symptoms persist.';
             }
 
+            // CRITICAL FIX: Include Causal Graph Image in the standard output if available
+            const graphHtml = data.causal_graph_base64 ? 
+                `<div class="causal-graph-container mt-4 pt-3 border-t border-dashed border-border-light">
+                    <h4 class="font-semibold text-sm text-primary-dark">Causal Link Visualization</h4>
+                    <img src="${data.causal_graph_base64}" alt="Causal Graph Explanation" class="causal-display-img" />
+                </div>` : '';
+
+
             return `
                 <p class="bot-header">
                     <i class="fas fa-notes-medical mr-2"></i> Diagnosis Complete
@@ -341,8 +345,8 @@
 
                 <h3 class="text-lg font-semibold text-gray-800">Primary Prediction <span class="text-sm text-gray-500">(${primaryLang})</span></h3>
                 <p class="text-base mt-1"><strong>Disease:</strong> <span class="text-xl font-bold text-red-700">${primaryDiseaseClean}</span></p>
-
-                <p class="mt-4 font-semibold text-base border-t border-dashed border-border-light pt-3">Recommended Action:</p>
+                
+                ${graphHtml} <p class="mt-4 font-semibold text-base border-t border-dashed border-border-light pt-3">Recommended Action:</p>
                 <p class="text-base font-medium text-blue-600">${actionAdvice}</p>
 
                 <h3 class="text-lg font-semibold text-gray-800 mt-5 pt-3">Top Alternatives</h3>
@@ -447,7 +451,7 @@
                     hospitalButton.style.display = 'none';
                 }
 
-                // 6. Causal Graph Button Logic (Store data and show button)
+                // 6. Causal Graph Display Logic (Store data and show button)
                 if (data.causal_graph_base64 && !data.is_faq) {
                     lastGraphData = data.causal_graph_base64; // Store Base64 string
                     causalGraphButton.style.display = 'inline-flex';
@@ -469,7 +473,7 @@
         
         // --- GEOLOCATION AND MAPS LOGIC (Final Redirect Fix) ---
         function findNearestHospital() {
-            // CRITICAL FIX 1: This is the function that triggers the redirect.
+            // This function now executes the redirect logic immediately.
             hospitalButton.disabled = true;
             hospitalButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Locating...';
             
@@ -484,11 +488,10 @@
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
                     
-                    // FIX 3: Use the standard Google Maps search query URL (HTTPS ensures proper redirect)
-                    // The 'googleusercontent' trick forces the URL to bypass common internal browser blocks
-                    const mapsUrl = `https://www.google.com/maps/search/nearest+hospital/@${lat},${lon},15z`;
+                    // CRITICAL FIX: Use the standard, correct Google Maps search URL for guaranteed redirect
+                    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=hospital&query_place_id=0&center=${lat},${lon}`;
                     
-                    window.open(mapsUrl, '_blank'); // Direct window open should now work
+                    window.open(mapsUrl, '_blank'); // Direct window open should now work reliably
 
                     const successMessage = `
                         <p class="bot-header"><i class="fas fa-map-marked-alt mr-2"></i> Location Service</p>
@@ -522,7 +525,6 @@
         
         // --- CAUSAL GRAPH DISPLAY ---
         function showGraph() {
-            // FIX: This function now displays the stored Base64 image data in a new message bubble.
             if (lastGraphData) {
                  appendMessage('bot-message', `
                     <p class="bot-header"><i class="fas fa-chart-bar mr-2"></i> Causal Graph Explanation</p>
@@ -534,7 +536,6 @@
             } else {
                  appendMessage('bot-message', `<p class="bot-header">Visualization Error</p><p>No graph data available. Please run a diagnosis first.</p>`);
             }
-            // Hide the button again after displaying the graph to keep the UI clean
             causalGraphButton.style.display = 'none';
             lastGraphData = null; 
         }
