@@ -256,11 +256,8 @@
             // CRITICAL FIX: Reset all state and restore the initial message content
             lastPredictedDisease = null;
             symptomHistory = [];
-            
-            // Restore initial content by referencing the ID of the template message
-            const initialTemplate = document.getElementById('initial-message').outerHTML;
-            historyDiv.innerHTML = `<div class="bot-message p-4">${initialTemplate}</div>`;
-
+            const initialContent = document.getElementById('initial-message').innerHTML;
+            historyDiv.innerHTML = `<div class="bot-message p-4">${initialContent}</div>`;
             hospitalButton.style.display = 'none';
             lastGraphData = null;
             queryInput.focus();
@@ -330,7 +327,7 @@
                 actionAdvice = '✅ Symptoms indicate a low risk condition. Consider self-care or consult a doctor if symptoms persist.';
             }
 
-            // CRITICAL FIX: Hospital Link Injection into Advice Section
+            // CRITICAL FIX: Hospital Link Injection
             let hospitalLinkHtml = '';
             if (data.triage_level.includes('HIGH')) {
                 hospitalLinkHtml = `
@@ -344,10 +341,10 @@
             }
             
             // Causal Graph Display (Uses stored Base64 string from last turn)
-            const graphEmbedHtml = lastGraphData ? 
+            const graphEmbedHtml = data.causal_graph_base64 ? 
                 `<div class="causal-graph-container mt-4 pt-3 border-t border-dashed border-border-light">
                     <h4 class="font-semibold text-sm text-primary-dark">Causal Link Visualization</h4>
-                    <img src="data:image/png;base64,${lastGraphData}" alt="Causal Graph Explanation" class="causal-display-img" />
+                    <img src="data:image/png;base64,${data.causal_graph_base64}" alt="Causal Graph Explanation" class="causal-display-img" />
                 </div>` : '';
 
 
@@ -424,10 +421,12 @@
             const isSymptomCheck = isSymptomQuery(query);
             
             if (isSymptomCheck) {
+                // CRITICAL FIX: Accumulate symptoms and send the joint query
                 symptomHistory.push(query);
                 finalQuery = symptomHistory.join(', and also ');
-                lastPredictedDisease = null; 
+                lastPredictedDisease = null; // Clear disease memory before diagnosis
             } else {
+                // Follow-up question
                 finalQuery = query;
                 contextDiseaseValue = lastPredictedDisease; 
             }
@@ -458,7 +457,8 @@
                 
                 // 3. UPDATE CONTEXT MEMORY: 
                 if (!data.is_faq) {
-                     lastPredictedDisease = data.primary_disease;
+                     // CRITICAL FIX: Store the RAW ENGLISH prediction for stable context lookup
+                     lastPredictedDisease = data.raw_primary_disease_en;
                 }
                 
                 // 4. Update Global Graph Data
@@ -479,8 +479,10 @@
             }
         }
         
-        // --- GEOLOCATION AND MAPS LOGIC (Final Working Version) ---
+        // --- GEOLOCATION AND MAPS LOGIC ---
         function findNearestHospital() {
+            // This function is now fully implemented to open the map and report success.
+            
             const userLocation = prompt("Enter your City or Zip Code to find the nearest hospital:", "Chennai, 600001");
             
             if (!userLocation) {
@@ -503,26 +505,21 @@
             appendMessage('bot-message', successMessage);
         }
         
-        // --- Event Listeners (FIXED: Attach functions to button IDs) ---
-        // New Chat Button Fix: This listener now executes the startNewChat function.
+        // Event Listeners (FINAL FIX: Attach functions to button IDs)
+        document.getElementById('analyze-button').addEventListener('click', sendQuery);
+        document.getElementById('hospital-button').addEventListener('click', findNearestHospital);
         document.getElementById('new-chat-button').addEventListener('click', startNewChat);
 
-        // Enter Key Fix: Attaching keypress listener directly to the input field
+
         queryInput.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 sendQuery();
-                e.preventDefault(); // Prevents the default Enter key behavior (new line)
+                e.preventDefault(); // CRITICAL FIX: Prevent default behavior (new line)
             }
         });
 
-        // Other Button Listeners
-        document.getElementById('analyze-button').addEventListener('click', sendQuery);
-        document.getElementById('hospital-button').addEventListener('click', findNearestHospital);
-        
-        // Initial Focus
         document.addEventListener('DOMContentLoaded', () => {
             queryInput.focus();
-            hospitalButton.style.display = 'none';
         });
     </script>
 </body>

@@ -1,4 +1,4 @@
-# CODE 65.0: FastAPI Backend (FINAL: Hospital Link Function Defined)
+# CODE 71.0: FastAPI Backend (FINAL: Multilingual Context Fix)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,7 +12,8 @@ import base64
 import os
 import networkx as nx
 import matplotlib.pyplot as plt
-import io
+import io 
+import matplotlib.font_manager as fm 
 from typing import List, Dict, Any, Optional
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from sentence_transformers import SentenceTransformer
@@ -55,7 +56,10 @@ LANG_MAP = {'en': LANG_ENGLISH_CODE, 'hi': LANG_HINDI_CODE, 'ta': LANG_TAMIL_COD
             LANG_ENGLISH_CODE: 'en', LANG_HINDI_CODE: 'hi', LANG_TAMIL_CODE: 'ta'}
 
 
-# --- Utility Functions ---
+# --------------------------------------------------------------------------------
+# --- UTILITY FUNCTIONS ---
+# --------------------------------------------------------------------------------
+
 def clean_text(text):
     text = text.lower()
     text = re.sub(r'[^a-z\s]', '', text) 
@@ -79,10 +83,9 @@ def translate_text(text, src_lang, tgt_lang):
     )
     return TRANSLATOR_TOKENIZER.batch_decode(generated_tokens, skip_special_tokens=True)[0]
 
-def get_hospital_search_link(language_code): # <--- DEFINED THE MISSING FUNCTION
-    """Returns a universal Google Maps search URL."""
-    # This URL is used by the frontend when the user clicks the embedded link.
-    return "https://www.google.com/maps/search/?api=1&query=nearest+hospital&center=$4"
+def get_hospital_search_link(language_code):
+    """Returns a placeholder universal Google Maps search URL."""
+    return "https://www.google.com/maps/search/nearest+hospital+emergency+room"
 
 
 def calculate_triage_score_and_tokens(symptoms_text_en: str):
@@ -102,7 +105,6 @@ def calculate_triage_score_and_tokens(symptoms_text_en: str):
 
     for key, weight in symptom_details.items():
         if weight == 7 and 7 in official_weights_used: continue
-        
         final_score += weight
         official_weights_used[weight] = key 
         final_recognized_tokens.append(key) 
@@ -135,7 +137,7 @@ def retrieve_faq_answer(user_input_en: str, model, embeddings, df_kb, context_di
     else:
         return None, None, best_score
 
-# --- IN-MEMORY GRAPH GENERATION ---
+# --- IN-MEMORY GRAPH GENERATION (FIXED FONT) ---
 def generate_and_encode_graph_base64(recognized_symptoms: List[str], predicted_disease: str):
     """Generates the graph image in memory and returns it as a Base64 string."""
     
@@ -147,12 +149,19 @@ def generate_and_encode_graph_base64(recognized_symptoms: List[str], predicted_d
     for symptom in recognized_symptoms:
         subgraph.add_edge(symptom, predicted_disease_node)
 
+    # Use a non-GUI backend for stability
     plt.switch_backend('Agg') 
     fig = plt.figure(figsize=(8, 4)) 
 
+    # --- CRITICAL FIX: Set Font Properties for Multilingual Support ---
+    # This addresses the Devanagari (Hindi) rendering failure by using Unicode fonts.
+    plt.rcParams['font.sans-serif'] = ['Nirmala UI', 'Arial Unicode MS', 'DejaVu Sans', 'sans-serif']
+    plt.rcParams['font.family'] = 'sans-serif'
+    
     try: pos = nx.circular_layout(subgraph) 
     except Exception: pos = nx.shell_layout(subgraph)
     
+    # Map nodes to colors/labels
     node_colors = ['#EF5350' if node == predicted_disease_node else '#42A5F5' for node in subgraph.nodes]
     node_labels = {node: node.replace('_', ' ').title() for node in subgraph.nodes}
     
@@ -161,13 +170,14 @@ def generate_and_encode_graph_base64(recognized_symptoms: List[str], predicted_d
             labels=node_labels,
             node_size=2500, 
             node_color=node_colors, 
-            font_size=8, 
+            font_size=10, 
             font_color='white', 
             arrowstyle='-|>',
             arrowsize=15)
     
     plt.title(f"Causal Links: {predicted_disease}", fontsize=10)
     
+    # Save the figure to an in-memory buffer (BytesIO)
     buffer = io.BytesIO()
     plt.savefig(buffer, format='png', bbox_inches='tight')
     plt.close(fig) 
@@ -184,6 +194,8 @@ class ChatInput(BaseModel):
     context_disease: Optional[str] = None
 
 class PredictionOutput(BaseModel):
+    # CRITICAL NEW FIELD: Stores the clean English name for the JS client memory
+    raw_primary_disease_en: str 
     primary_disease: str
     primary_confidence: float
     triage_level: str
@@ -213,6 +225,7 @@ def chat_endpoint(data: ChatInput):
     if match_a and score > 0.7:
         match_a_output = translate_text(match_a, LANG_ENGLISH_CODE, src_lang_code)
         return PredictionOutput(
+            raw_primary_disease_en="FAQ_TRIGGERED", 
             primary_disease=f"Answer: {match_a_output}", 
             primary_confidence=score,
             triage_level="INFO_REQUEST",
@@ -234,35 +247,35 @@ def chat_endpoint(data: ChatInput):
         disease = LE_ENCODER.inverse_transform([i])[0]
         top_3.append({'disease': disease, 'confidence': float(probabilities[i])})
         
-    primary_disease = top_3[0]['disease']
+    primary_disease_en = top_3[0]['disease'] 
     primary_confidence = top_3[0]['confidence']
     
     # --- CRITICAL FIX: LOW CONFIDENCE OVERRIDE ---
     if primary_confidence < 0.35:
         if 'urinary_pain' in cleaned_input or 'burning_micturition' in cleaned_input:
-            primary_disease = "Urinary tract infection"
+            primary_disease_en = "Urinary tract infection"
             primary_confidence = 0.50
         elif 'throat_pain' in cleaned_input or 'sore_throat' in cleaned_input:
-            primary_disease = "Common Cold"
+            primary_disease_en = "Common Cold"
             primary_confidence = 0.40
             
     # Get Triage
     triage_score, triage_level, recognized_symptoms = calculate_triage_score_and_tokens(user_input_en)
     
-    # Final Output: Translate primary disease for output
+    # Final Output: Translate primary disease for display
     if src_lang_code != LANG_ENGLISH_CODE:
-        primary_disease_output = translate_text(primary_disease, LANG_ENGLISH_CODE, src_lang_code)
+        primary_disease_output = translate_text(primary_disease_en, LANG_ENGLISH_CODE, src_lang_code)
     else:
-        primary_disease_output = primary_disease
+        primary_disease_output = primary_disease_en
 
     # 4. Generate Graph and Hospital Link
     causal_graph_data = generate_and_encode_graph_base64(recognized_symptoms, primary_disease_output)
     
-    # CRITICAL FIX: Generate link ONLY if HIGH RISK
     hospital_link = get_hospital_search_link(src_lang_code) if triage_level == "HIGH_RISK" else None
 
     # Final Output Structure 
     return PredictionOutput(
+        raw_primary_disease_en=primary_disease_en,
         primary_disease=primary_disease_output,
         primary_confidence=primary_confidence,
         triage_level=triage_level,
