@@ -1,4 +1,4 @@
-# CODE 63.0: FastAPI Backend (FINAL: Hospital Link Injection and Stable Logic)
+# CODE 65.0: FastAPI Backend (FINAL: Hospital Link Function Defined)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -55,8 +55,7 @@ LANG_MAP = {'en': LANG_ENGLISH_CODE, 'hi': LANG_HINDI_CODE, 'ta': LANG_TAMIL_COD
             LANG_ENGLISH_CODE: 'en', LANG_HINDI_CODE: 'hi', LANG_TAMIL_CODE: 'ta'}
 
 
-# --- Utility Functions (Only changed sections are included) ---
-
+# --- Utility Functions ---
 def clean_text(text):
     text = text.lower()
     text = re.sub(r'[^a-z\s]', '', text) 
@@ -80,10 +79,17 @@ def translate_text(text, src_lang, tgt_lang):
     )
     return TRANSLATOR_TOKENIZER.batch_decode(generated_tokens, skip_special_tokens=True)[0]
 
+def get_hospital_search_link(language_code): # <--- DEFINED THE MISSING FUNCTION
+    """Returns a universal Google Maps search URL."""
+    # This URL is used by the frontend when the user clicks the embedded link.
+    return "https://www.google.com/maps/search/?api=1&query=nearest+hospital&center=$4"
+
+
 def calculate_triage_score_and_tokens(symptoms_text_en: str):
     search_string = symptoms_text_en.lower().replace(' ', '_')
     recognized_keys = set()
     symptom_details = {} 
+
     for symptom_phrase, weight in WEIGHT_MAP.items():
         if symptom_phrase in search_string:
             if symptom_phrase not in recognized_keys:
@@ -96,16 +102,14 @@ def calculate_triage_score_and_tokens(symptoms_text_en: str):
 
     for key, weight in symptom_details.items():
         if weight == 7 and 7 in official_weights_used: continue
+        
         final_score += weight
         official_weights_used[weight] = key 
         final_recognized_tokens.append(key) 
     
-    if final_score > TRIAGE_THRESHOLDS['MODERATE_MAX']:
-        level = "HIGH_RISK"
-    elif final_score > TRIAGE_THRESHOLDS['LOW_MAX']:
-        level = "MODERATE_RISK"
-    else:
-        level = "LOW_RISK"
+    if final_score > TRIAGE_THRESHOLDS['MODERATE_MAX']: level = "HIGH_RISK"
+    elif final_score > TRIAGE_THRESHOLDS['LOW_MAX']: level = "MODERATE_RISK"
+    else: level = "LOW_RISK"
     
     return final_score, level, final_recognized_tokens
 
@@ -131,14 +135,7 @@ def retrieve_faq_answer(user_input_en: str, model, embeddings, df_kb, context_di
     else:
         return None, None, best_score
 
-def get_hospital_search_link(language_code):
-    """Generates the localized Google Maps search link."""
-    # We use a default English search query, which works globally on Google Maps,
-    # but the display text can be localized based on the language code.
-    search_query = "Nearest Hospital Emergency Room"
-    return f"https://www.google.com/maps/search/?api=1&query={search_query}"
-
-
+# --- IN-MEMORY GRAPH GENERATION ---
 def generate_and_encode_graph_base64(recognized_symptoms: List[str], predicted_disease: str):
     """Generates the graph image in memory and returns it as a Base64 string."""
     
@@ -159,8 +156,15 @@ def generate_and_encode_graph_base64(recognized_symptoms: List[str], predicted_d
     node_colors = ['#EF5350' if node == predicted_disease_node else '#42A5F5' for node in subgraph.nodes]
     node_labels = {node: node.replace('_', ' ').title() for node in subgraph.nodes}
     
-    nx.draw(subgraph, pos, with_labels=True, labels=node_labels, node_size=2500, 
-            node_color=node_colors, font_size=8, font_color='white', arrowstyle='-|>', arrowsize=15)
+    nx.draw(subgraph, pos, 
+            with_labels=True, 
+            labels=node_labels,
+            node_size=2500, 
+            node_color=node_colors, 
+            font_size=8, 
+            font_color='white', 
+            arrowstyle='-|>',
+            arrowsize=15)
     
     plt.title(f"Causal Links: {predicted_disease}", fontsize=10)
     
@@ -171,7 +175,7 @@ def generate_and_encode_graph_base64(recognized_symptoms: List[str], predicted_d
     
     encoded_string = base64.b64encode(buffer.read()).decode('utf-8')
 
-    return f"data:image/png;base64,{encoded_string}"
+    return encoded_string
 
 
 # --- API Data Schemas ---
@@ -186,7 +190,7 @@ class PredictionOutput(BaseModel):
     top_3_predictions: List[Dict]
     is_faq: bool
     causal_graph_base64: Optional[str] = None 
-    hospital_link: Optional[str] = None # <-- CRITICAL: Now included in the schema
+    hospital_link: Optional[str] = None
 
 
 # --- API Endpoint ---
@@ -201,7 +205,7 @@ def chat_endpoint(data: ChatInput):
     else:
         user_input_en = user_input
         
-    # PHASE 1: FAQ RETRIEVAL CHECK
+    # 2. Check for FAQ/Contextual Query
     match_q, match_a, score = retrieve_faq_answer(
         user_input_en, SBERT_MODEL, FAQ_EMBEDDINGS, DF_FAQ, context_disease=context_disease
     )
@@ -218,7 +222,8 @@ def chat_endpoint(data: ChatInput):
             hospital_link=None
         )
     
-    # PHASE 2: SYMPTOM CHECKER FALLBACK
+    # 3. SYMPTOM CHECKER FALLBACK
+    
     cleaned_input = clean_text(user_input_en)
     input_vector = SBERT_MODEL.encode([cleaned_input]).astype(np.float64) 
     probabilities = SVM_MODEL.predict_proba(input_vector)[0]
@@ -232,7 +237,7 @@ def chat_endpoint(data: ChatInput):
     primary_disease = top_3[0]['disease']
     primary_confidence = top_3[0]['confidence']
     
-    # --- CRITICAL FIX: LOW CONFIDENCE OVERRIDE --- (omitted for brevity)
+    # --- CRITICAL FIX: LOW CONFIDENCE OVERRIDE ---
     if primary_confidence < 0.35:
         if 'urinary_pain' in cleaned_input or 'burning_micturition' in cleaned_input:
             primary_disease = "Urinary tract infection"
@@ -264,5 +269,5 @@ def chat_endpoint(data: ChatInput):
         top_3_predictions=top_3,
         is_faq=False,
         causal_graph_base64=causal_graph_data,
-        hospital_link=hospital_link # <--- Now sent in JSON
+        hospital_link=hospital_link
     )

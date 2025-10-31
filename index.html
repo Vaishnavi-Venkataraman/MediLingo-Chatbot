@@ -192,6 +192,10 @@
             background-color: #ffebeb;
             border: 1px solid #f8d7da;
         }
+        .emergency-link-container a {
+            color: var(--risk-high);
+            font-weight: 700;
+        }
     </style>
 </head>
 <body class="p-4">
@@ -226,10 +230,6 @@
                     <i class="fas fa-paper-plane"></i> Send
                 </button>
                 
-                <button id="causal-graph-button" class="shadow-md" style="display: none;">
-                    <i class="fas fa-chart-bar"></i> Graph
-                </button>
-
                 <button id="hospital-button" class="shadow-md" style="display: none;">
                     <i class="fas fa-hospital-alt"></i> Hospital
                 </button>
@@ -247,19 +247,21 @@
         const queryInput = document.getElementById('query');
         const analyzeButton = document.getElementById('analyze-button');
         const hospitalButton = document.getElementById('hospital-button');
-        const causalGraphButton = document.getElementById('causal-graph-button');
         
         let lastPredictedDisease = null; 
         let symptomHistory = []; 
         let lastGraphData = null; 
 
         function startNewChat() {
+            // CRITICAL FIX: Reset all state and restore the initial message content
             lastPredictedDisease = null;
             symptomHistory = [];
-            const initialContent = document.getElementById('initial-message').innerHTML;
-            historyDiv.innerHTML = `<div class="bot-message">${initialContent}</div>`;
+            
+            // Restore initial content by referencing the ID of the template message
+            const initialTemplate = document.getElementById('initial-message').outerHTML;
+            historyDiv.innerHTML = `<div class="bot-message p-4">${initialTemplate}</div>`;
+
             hospitalButton.style.display = 'none';
-            causalGraphButton.style.display = 'none';
             lastGraphData = null;
             queryInput.focus();
         }
@@ -328,25 +330,24 @@
                 actionAdvice = '✅ Symptoms indicate a low risk condition. Consider self-care or consult a doctor if symptoms persist.';
             }
 
-            // CRITICAL FIX 1: Hospital Link in Advice Section
+            // CRITICAL FIX: Hospital Link Injection into Advice Section
             let hospitalLinkHtml = '';
-            if (data.triage_level.includes('HIGH') && data.hospital_link) {
-                // Ensure the link is visible and clickable within the chat output
+            if (data.triage_level.includes('HIGH')) {
                 hospitalLinkHtml = `
-                    <div class="emergency-link-container">
+                    <p class="emergency-link-container">
                         <i class="fas fa-exclamation-circle mr-2 text-red-600"></i> 
-                        <a href="${data.hospital_link}" target="_blank" class="font-bold text-red-600 underline hover:text-red-800">
-                            CLICK HERE for Nearest Hospital Search
+                        <a href="javascript:findNearestHospital()" style="color: var(--risk-high); text-decoration: underline;">
+                        CLICK HERE for Nearest Hospital Search
                         </a>
-                    </div>
+                    </p>
                 `;
             }
             
-            // Causal Graph Display
-            const graphEmbedHtml = data.causal_graph_base64 ? 
+            // Causal Graph Display (Uses stored Base64 string from last turn)
+            const graphEmbedHtml = lastGraphData ? 
                 `<div class="causal-graph-container mt-4 pt-3 border-t border-dashed border-border-light">
                     <h4 class="font-semibold text-sm text-primary-dark">Causal Link Visualization</h4>
-                    <img src="${data.causal_graph_base64}" alt="Causal Graph Explanation" class="causal-display-img" />
+                    <img src="data:image/png;base64,${lastGraphData}" alt="Causal Graph Explanation" class="causal-display-img" />
                 </div>` : '';
 
 
@@ -367,7 +368,9 @@
 
                 <p class="mt-4 font-semibold text-base border-t border-dashed border-border-light pt-3">Recommended Action:</p>
                 <p class="text-base font-medium text-blue-600">${actionAdvice}</p>
-                ${hospitalLinkHtml} <h3 class="text-lg font-semibold text-gray-800 mt-5 pt-3">Top Alternatives</h3>
+                ${hospitalLinkHtml}
+
+                <h3 class="text-lg font-semibold text-gray-800 mt-5 pt-3">Top Alternatives</h3>
                 ${top3Html}
             `;
         }
@@ -402,8 +405,7 @@
             
             queryInput.value = '';
             analyzeButton.disabled = true;
-            // Hospital button is now rendered based on API response, no need to disable here
-            causalGraphButton.disabled = true;
+            hospitalButton.disabled = true;
             queryInput.disabled = true;
 
             // 2. Append Loading Message
@@ -458,18 +460,12 @@
                 if (!data.is_faq) {
                      lastPredictedDisease = data.primary_disease;
                 }
+                
+                // 4. Update Global Graph Data
+                lastGraphData = data.causal_graph_base64;
 
-                // 4. Append Bot Response
+                // 5. Append Bot Response
                 appendMessage('bot-message', renderBotResponse(data, finalQuery));
-
-                // 5. Causal Graph Display Logic (Store data and show button)
-                if (data.causal_graph_base64 && !data.is_faq) {
-                    lastGraphData = data.causal_graph_base64; // Store Base64 string
-                    causalGraphButton.style.display = 'inline-flex';
-                } else {
-                    causalGraphButton.style.display = 'none';
-                    lastGraphData = null;
-                }
 
             } catch (error) {
                 // Remove the loading message
@@ -477,16 +473,15 @@
                 appendMessage('bot-message', `<p class="text-red-600">❌ Network/Connection Error. Please ensure the backend is running. <br>Details: ${error.message}</p>`);
             } finally {
                 analyzeButton.disabled = false;
-                hospitalButton.disabled = false; // Must be enabled if risk is HIGH (handled in renderBotResponse)
+                hospitalButton.disabled = false;
                 queryInput.disabled = false;
                 queryInput.focus();
             }
         }
         
-        // --- GEOLOCATION AND MAPS LOGIC (Removed Geolocation API reliance) ---
+        // --- GEOLOCATION AND MAPS LOGIC (Final Working Version) ---
         function findNearestHospital() {
-            // CRITICAL FIX: Prompt for location/city for search
-            const userLocation = prompt("Enter your City or Zip Code to search for the nearest hospital:", "Chennai, 600001");
+            const userLocation = prompt("Enter your City or Zip Code to find the nearest hospital:", "Chennai, 600001");
             
             if (!userLocation) {
                 return;
@@ -494,8 +489,8 @@
 
             const encodedLocation = encodeURIComponent("Hospital near " + userLocation);
             
-            // Use standard Google Search URL for reliability
-            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=nearest7{encodedLocation}`;
+            // Use standard Google Search URL for reliable redirect
+            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=nearest+hospital&center=$6{encodedLocation}`;
             
             // Open the link in a new tab
             window.open(mapsUrl, '_blank'); 
@@ -506,43 +501,28 @@
                 <p class="text-xs text-gray-500 mt-2">The map will open in a new tab.</p>
             `;
             appendMessage('bot-message', successMessage);
-            // After successfully showing the link, keep the button disabled status based on risk (no need to reset)
         }
-
-        function showGraph() {
-            if (lastGraphData) {
-                 appendMessage('bot-message', `
-                    <p class="bot-header"><i class="fas fa-chart-bar mr-2"></i> Causal Graph Explanation</p>
-                    <div class="causal-display">
-                        <img src="data:image/png;base64,${lastGraphData}" alt="Causal Graph Visualization" class="causal-display-img" />
-                        <p class="text-xs text-gray-500 mt-2">Visualization of recognized symptom links to the primary diagnosis.</p>
-                    </div>
-                `);
-            } else {
-                 appendMessage('bot-message', `<p class="bot-header">Visualization Error</p><p>No graph data available. Please run a diagnosis first.</p>`);
-            }
-            causalGraphButton.style.display = 'none';
-            lastGraphData = null; 
-        }
-
-
-        // Event Listeners
-        document.getElementById('analyze-button').addEventListener('click', sendQuery);
-        document.getElementById('hospital-button').addEventListener('click', findNearestHospital);
-        document.getElementById('causal-graph-button').addEventListener('click', showGraph);
+        
+        // --- Event Listeners (FIXED: Attach functions to button IDs) ---
+        // New Chat Button Fix: This listener now executes the startNewChat function.
         document.getElementById('new-chat-button').addEventListener('click', startNewChat);
 
-
+        // Enter Key Fix: Attaching keypress listener directly to the input field
         queryInput.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 sendQuery();
+                e.preventDefault(); // Prevents the default Enter key behavior (new line)
             }
         });
 
+        // Other Button Listeners
+        document.getElementById('analyze-button').addEventListener('click', sendQuery);
+        document.getElementById('hospital-button').addEventListener('click', findNearestHospital);
+        
+        // Initial Focus
         document.addEventListener('DOMContentLoaded', () => {
             queryInput.focus();
             hospitalButton.style.display = 'none';
-            causalGraphButton.style.display = 'none';
         });
     </script>
 </body>
