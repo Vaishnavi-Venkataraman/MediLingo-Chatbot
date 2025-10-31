@@ -209,7 +209,7 @@
         
         <div class="chat-window">
             <div id="history">
-                <div class="bot-message p-4" id="initial-message">
+                <div class="bot-message p-4" id="initial-message-template">
                     <p class="bot-header">
                         <i class="fas fa-robot mr-2 text-primary-dark"></i> MediLingo AI
                     </p>
@@ -251,13 +251,23 @@
         let lastPredictedDisease = null; 
         let symptomHistory = []; 
         let lastGraphData = null; 
+        
+        // Function to handle Enter key submit (Must be defined globally)
+        function handleEnterKey(e) {
+            if (e.key === 'Enter') {
+                sendQuery();
+                e.preventDefault(); 
+            }
+        }
 
         function startNewChat() {
             // CRITICAL FIX: Reset all state and restore the initial message content
             lastPredictedDisease = null;
             symptomHistory = [];
-            const initialContent = document.getElementById('initial-message').innerHTML;
-            historyDiv.innerHTML = `<div class="bot-message p-4">${initialContent}</div>`;
+            // Use querySelector to get the initial message template cleanly
+            const initialTemplate = document.querySelector('#initial-message-template').outerHTML;
+            // Clear history and restore the greeting template
+            historyDiv.innerHTML = `<div class="bot-message p-4">${initialTemplate}</div>`;
             hospitalButton.style.display = 'none';
             lastGraphData = null;
             queryInput.focus();
@@ -327,7 +337,7 @@
                 actionAdvice = '✅ Symptoms indicate a low risk condition. Consider self-care or consult a doctor if symptoms persist.';
             }
 
-            // CRITICAL FIX: Hospital Link Injection
+            // Hospital Link Injection
             let hospitalLinkHtml = '';
             if (data.triage_level.includes('HIGH')) {
                 hospitalLinkHtml = `
@@ -340,7 +350,7 @@
                 `;
             }
             
-            // Causal Graph Display (Uses stored Base64 string from last turn)
+            // Causal Graph Display
             const graphEmbedHtml = data.causal_graph_base64 ? 
                 `<div class="causal-graph-container mt-4 pt-3 border-t border-dashed border-border-light">
                     <h4 class="font-semibold text-sm text-primary-dark">Causal Link Visualization</h4>
@@ -417,7 +427,7 @@
             let contextDiseaseValue = null;
             let finalQuery = query;
 
-            // --- CUMULATIVE MEMORY AND CONTEXT MANAGEMENT ---
+            // --- CUMULATIVE MEMORY AND CONTEXT MANAGEMENT FIX ---
             const isSymptomCheck = isSymptomQuery(query);
             
             if (isSymptomCheck) {
@@ -471,83 +481,37 @@
                 appendMessage('bot-message', `<p class="text-red-600">❌ Network/Connection Error. Please ensure the backend is running. <br>Details: ${error.message}</p>`);
             } finally {
                 analyzeButton.disabled = false;
+                hospitalButton.disabled = false;
                 queryInput.disabled = false;
                 queryInput.focus();
             }
         }
         
-        // --- NEW GEOLOCATION AND MAPS LOGIC ---
+        // --- GEOLOCATION AND MAPS LOGIC ---
         function findNearestHospital() {
-            // 1. Initial status message
-            appendMessage('bot-message', `<p class="bot-header"><i class="fas fa-map-marked-alt mr-2"></i> Locating...</p><p>Attempting to determine your current location for the nearest hospitals...</p>`);
-
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        // Success: Coordinates obtained
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        
-                        // Use coordinates to construct the search query
-                        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=hospitals+near+me&center=${lat},${lng}`;
-
-                        // Open the link in a new tab
-                        window.open(mapsUrl, '_blank'); 
-
-                        // Update the status message content
-                        historyDiv.lastChild.innerHTML = `
-                            <p class="bot-header"><i class="fas fa-map-marked-alt mr-2"></i> Location Service</p>
-                            <p>✅ **Location found!** Searching Google Maps for the **Nearest Hospitals** near your location.</p>
-                            <p class="text-xs text-gray-500 mt-2">The map will open in a new tab. Please allow pop-ups if blocked.</p>
-                        `;
-                        historyDiv.scrollTop = historyDiv.scrollHeight;
-                    },
-                    (error) => {
-                        // Failure: Geolocation denied or failed (Code 1: Permission Denied, Code 2: Position Unavailable)
-                        
-                        // Remove the "Locating..." message
-                        if (historyDiv.lastChild) historyDiv.lastChild.remove(); 
-                        
-                        const fallbackLocation = prompt("❌ Location access denied or failed. Please enter your City or Zip Code to find the nearest hospital:", "City, Zip Code");
-                        
-                        if (fallbackLocation) {
-                            const encodedQuery = encodeURIComponent("Hospitals near " + fallbackLocation);
-                            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedQuery}`;
-                            window.open(mapsUrl, '_blank');
-                            
-                            appendMessage('bot-message', `
-                                <p class="bot-header"><i class="fas fa-map-marked-alt mr-2"></i> Location Service (Fallback)</p>
-                                <p>Searching Google Maps for **'Hospitals near ${fallbackLocation}'**.</p>
-                                <p class="text-xs text-gray-500 mt-2">The map will open in a new tab.</p>
-                            `);
-                        } else {
-                            appendMessage('bot-message', `<p class="bot-header"><i class="fas fa-times-circle mr-2"></i> Location Service Failed</p><p>Could not determine location and manual input was skipped. Please try again.</p>`);
-                        }
-                    }
-                );
-            } else {
-                // Browser doesn't support Geolocation
-                if (historyDiv.lastChild) historyDiv.lastChild.remove(); // Remove initial message
-
-                const fallbackLocation = prompt("❌ Your browser does not support automatic geolocation. Please enter your City or Zip Code to find the nearest hospital:", "City, Zip Code");
-                
-                if (fallbackLocation) {
-                    const encodedQuery = encodeURIComponent("Hospitals near " + fallbackLocation);
-                    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedQuery}`;
-                    window.open(mapsUrl, '_blank');
-
-                    appendMessage('bot-message', `
-                        <p class="bot-header"><i class="fas fa-map-marked-alt mr-2"></i> Location Service (Fallback)</p>
-                        <p>Searching Google Maps for **'Hospitals near ${fallbackLocation}'**.</p>
-                        <p class="text-xs text-gray-500 mt-2">The map will open in a new tab.</p>
-                    `);
-                } else {
-                    appendMessage('bot-message', `<p class="bot-header"><i class="fas fa-times-circle mr-2"></i> Location Service Failed</p><p>Could not determine location and manual input was skipped. Please try again.</p>`);
-                }
+            const userLocation = prompt("Enter your City or Zip Code to find the nearest hospital:", "Chennai, 600001");
+            
+            if (!userLocation) {
+                return;
             }
+
+            const encodedLocation = encodeURIComponent("Hospital near " + userLocation);
+            
+            // Use standard Google Search URL for reliable redirect
+            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=nearest+hospital&center=$6{encodedLocation}`;
+            
+            // Open the link in a new tab
+            window.open(mapsUrl, '_blank'); 
+
+            const successMessage = `
+                <p class="bot-header"><i class="fas fa-map-marked-alt mr-2"></i> Location Service</p>
+                <p>Searching Google Maps for **'Hospitals near ${userLocation}'**.</p>
+                <p class="text-xs text-gray-500 mt-2">The map will open in a new tab.</p>
+            `;
+            appendMessage('bot-message', successMessage);
         }
         
-        // Event Listeners (Attach functions to button IDs)
+        // Event Listeners (CRITICAL FINAL FIX: Attach functions to button IDs)
         document.getElementById('analyze-button').addEventListener('click', sendQuery);
         document.getElementById('hospital-button').addEventListener('click', findNearestHospital);
         document.getElementById('new-chat-button').addEventListener('click', startNewChat);
