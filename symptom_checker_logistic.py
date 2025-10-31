@@ -1,4 +1,3 @@
-# CODE 2.0: Rectified Symptoms Checker (Logistic Regression with OVR)
 
 import pandas as pd
 import numpy as np
@@ -6,7 +5,6 @@ import joblib
 from sklearn.preprocessing import LabelEncoder
 from sklearn.linear_model import LogisticRegression 
 from sklearn.metrics import accuracy_score, classification_report
-# Rectification: Import OneVsRestClassifier for future-proofing multi-class
 from sklearn.multiclass import OneVsRestClassifier 
 from sklearn.svm import SVC, LinearSVC
 from sklearn.naive_bayes import GaussianNB
@@ -34,65 +32,46 @@ le = LabelEncoder()
 y_train = le.fit_transform(y_train_text)
 y_test = le.transform(y_test_text)
 
-# Store the exact symptom list (CRITICAL for matching user input)
-# Note: Lowercasing is done to simplify user input matching later
 SYMPTOM_LIST = [col.strip().replace(' ', '_').lower() for col in X_train.columns]
-X_train.columns = SYMPTOM_LIST # Rectification: Ensure X_train uses cleaned names
-X_test.columns = SYMPTOM_LIST  # Rectification: Ensure X_test uses cleaned names
+X_train.columns = SYMPTOM_LIST 
+X_test.columns = SYMPTOM_LIST
 
 
 print(f"Training Data Shape (X, y): {X_train.shape}, {y_train.shape}")
 print(f"Total Unique Diseases (Classes): {len(le.classes_)}")
 
-# --- 2. Model Training (Rectified using OneVsRestClassifier) ---
 print("\n2. Training Logistic Regression Model (Rectified OVR)...")
-# Rectification: Using OVR wrapper to avoid FutureWarning
 lr_model = OneVsRestClassifier(LogisticRegression(solver='liblinear', max_iter=500, random_state=42))
 lr_model.fit(X_train, y_train)
 
-# --- 3. Save Model and Encoder ---
 joblib.dump(lr_model, 'lr_model.pkl')
 joblib.dump(le, 'label_encoder.pkl')
 print("\n3. Model (lr_model.pkl) and Encoder (label_encoder.pkl) saved successfully.")
-
-
-# ----------------------------------------------------------------------------------
-# 4. CUSTOM TESTING FUNCTIONS (Rectified for DataFrame input)
-# ----------------------------------------------------------------------------------
 
 def preprocess_custom_symptoms(custom_symptoms: list, symptom_list: list) -> pd.DataFrame:
     """
     Creates the required binary feature vector (1x132 matrix) with correct feature names.
     """
-    # Create a Pandas Series of zeros with the exact symptom list as the index
     input_series = pd.Series(0, index=symptom_list)
-    
-    # Standardize and clean the user input symptoms
+
     cleaned_symptoms = [s.strip().replace(' ', '_').lower() for s in custom_symptoms]
-    
-    # Populate the vector: check for symptom existence
+
     recognized_symptoms = []
     for symptom in cleaned_symptoms:
         if symptom in symptom_list:
             input_series.loc[symptom] = 1
             recognized_symptoms.append(symptom)
         else:
-            # Improvement: Now the Warning only shows for truly unrecognized symptoms
             print(f"Warning: Symptom '{symptom}' not recognized by the model dictionary.")
-            
-    # Rectification: Convert the Series to a 1-row DataFrame with correct columns
     return input_series.to_frame().T 
 
 
 def predict_disease(model, encoder, symptom_input_df, top_k=3):
     """Predicts the disease, confidence, and top k alternatives."""
-    
-    # Check if any symptoms were recognized (sum of the row should be > 0)
+
     if symptom_input_df.iloc[0].sum() == 0:
         return "No Recognized Symptoms Provided", []
 
-    # 1. Prediction
-    # Rectification: Input is now a DataFrame, fixing the feature name warning
     prediction_index = model.predict(symptom_input_df)[0]
     predicted_disease = encoder.inverse_transform([prediction_index])[0]
     

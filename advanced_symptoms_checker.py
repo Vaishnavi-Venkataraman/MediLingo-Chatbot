@@ -1,5 +1,3 @@
-# CODE 45.0: Advanced Symptom Checker - DEBUGGED DATA SAVING
-
 import pandas as pd
 import numpy as np
 import re
@@ -7,9 +5,8 @@ import joblib
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sentence_transformers import SentenceTransformer 
-import os # NEW IMPORT for file check
+import os 
 
-# --- 1. Data Preparation and Cleaning ---
 print("--- 1. Data Preparation and Cleaning ---")
 try:
     df_text = pd.read_csv('Symptom2Disease.csv') 
@@ -25,7 +22,6 @@ if 'index' in df_text.columns:
     df_text = df_text.drop('index', axis=1)
 
 def clean_text(text):
-    """Clean the symptom descriptions."""
     text = text.lower()
     text = re.sub(r'[^a-z\s]', '', text) 
     text = re.sub(r'\s+', ' ', text).strip()

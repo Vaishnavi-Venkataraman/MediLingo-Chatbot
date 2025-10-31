@@ -417,16 +417,14 @@
             let contextDiseaseValue = null;
             let finalQuery = query;
 
-            // --- CUMULATIVE MEMORY AND CONTEXT MANAGEMENT FIX ---
+            // --- CUMULATIVE MEMORY AND CONTEXT MANAGEMENT ---
             const isSymptomCheck = isSymptomQuery(query);
             
             if (isSymptomCheck) {
-                // CRITICAL FIX: Accumulate symptoms and send the joint query
                 symptomHistory.push(query);
                 finalQuery = symptomHistory.join(', and also ');
-                lastPredictedDisease = null; // Clear disease memory before diagnosis
+                lastPredictedDisease = null; 
             } else {
-                // Follow-up question
                 finalQuery = query;
                 contextDiseaseValue = lastPredictedDisease; 
             }
@@ -457,7 +455,7 @@
                 
                 // 3. UPDATE CONTEXT MEMORY: 
                 if (!data.is_faq) {
-                     // CRITICAL FIX: Store the RAW ENGLISH prediction for stable context lookup
+                     // Save the RAW ENGLISH prediction for stable context lookup
                      lastPredictedDisease = data.raw_primary_disease_en;
                 }
                 
@@ -473,39 +471,83 @@
                 appendMessage('bot-message', `<p class="text-red-600">❌ Network/Connection Error. Please ensure the backend is running. <br>Details: ${error.message}</p>`);
             } finally {
                 analyzeButton.disabled = false;
-                hospitalButton.disabled = false;
                 queryInput.disabled = false;
                 queryInput.focus();
             }
         }
         
-        // --- GEOLOCATION AND MAPS LOGIC ---
+        // --- NEW GEOLOCATION AND MAPS LOGIC ---
         function findNearestHospital() {
-            // This function is now fully implemented to open the map and report success.
-            
-            const userLocation = prompt("Enter your City or Zip Code to find the nearest hospital:", "Chennai, 600001");
-            
-            if (!userLocation) {
-                return;
+            // 1. Initial status message
+            appendMessage('bot-message', `<p class="bot-header"><i class="fas fa-map-marked-alt mr-2"></i> Locating...</p><p>Attempting to determine your current location for the nearest hospitals...</p>`);
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        // Success: Coordinates obtained
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        
+                        // Use coordinates to construct the search query
+                        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=hospitals+near+me&center=${lat},${lng}`;
+
+                        // Open the link in a new tab
+                        window.open(mapsUrl, '_blank'); 
+
+                        // Update the status message content
+                        historyDiv.lastChild.innerHTML = `
+                            <p class="bot-header"><i class="fas fa-map-marked-alt mr-2"></i> Location Service</p>
+                            <p>✅ **Location found!** Searching Google Maps for the **Nearest Hospitals** near your location.</p>
+                            <p class="text-xs text-gray-500 mt-2">The map will open in a new tab. Please allow pop-ups if blocked.</p>
+                        `;
+                        historyDiv.scrollTop = historyDiv.scrollHeight;
+                    },
+                    (error) => {
+                        // Failure: Geolocation denied or failed (Code 1: Permission Denied, Code 2: Position Unavailable)
+                        
+                        // Remove the "Locating..." message
+                        if (historyDiv.lastChild) historyDiv.lastChild.remove(); 
+                        
+                        const fallbackLocation = prompt("❌ Location access denied or failed. Please enter your City or Zip Code to find the nearest hospital:", "City, Zip Code");
+                        
+                        if (fallbackLocation) {
+                            const encodedQuery = encodeURIComponent("Hospitals near " + fallbackLocation);
+                            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedQuery}`;
+                            window.open(mapsUrl, '_blank');
+                            
+                            appendMessage('bot-message', `
+                                <p class="bot-header"><i class="fas fa-map-marked-alt mr-2"></i> Location Service (Fallback)</p>
+                                <p>Searching Google Maps for **'Hospitals near ${fallbackLocation}'**.</p>
+                                <p class="text-xs text-gray-500 mt-2">The map will open in a new tab.</p>
+                            `);
+                        } else {
+                            appendMessage('bot-message', `<p class="bot-header"><i class="fas fa-times-circle mr-2"></i> Location Service Failed</p><p>Could not determine location and manual input was skipped. Please try again.</p>`);
+                        }
+                    }
+                );
+            } else {
+                // Browser doesn't support Geolocation
+                if (historyDiv.lastChild) historyDiv.lastChild.remove(); // Remove initial message
+
+                const fallbackLocation = prompt("❌ Your browser does not support automatic geolocation. Please enter your City or Zip Code to find the nearest hospital:", "City, Zip Code");
+                
+                if (fallbackLocation) {
+                    const encodedQuery = encodeURIComponent("Hospitals near " + fallbackLocation);
+                    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedQuery}`;
+                    window.open(mapsUrl, '_blank');
+
+                    appendMessage('bot-message', `
+                        <p class="bot-header"><i class="fas fa-map-marked-alt mr-2"></i> Location Service (Fallback)</p>
+                        <p>Searching Google Maps for **'Hospitals near ${fallbackLocation}'**.</p>
+                        <p class="text-xs text-gray-500 mt-2">The map will open in a new tab.</p>
+                    `);
+                } else {
+                    appendMessage('bot-message', `<p class="bot-header"><i class="fas fa-times-circle mr-2"></i> Location Service Failed</p><p>Could not determine location and manual input was skipped. Please try again.</p>`);
+                }
             }
-
-            const encodedLocation = encodeURIComponent("Hospital near " + userLocation);
-            
-            // Use standard Google Search URL for reliable redirect
-            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=nearest+hospital&center=$6{encodedLocation}`;
-            
-            // Open the link in a new tab
-            window.open(mapsUrl, '_blank'); 
-
-            const successMessage = `
-                <p class="bot-header"><i class="fas fa-map-marked-alt mr-2"></i> Location Service</p>
-                <p>Searching Google Maps for **'Hospitals near ${userLocation}'**.</p>
-                <p class="text-xs text-gray-500 mt-2">The map will open in a new tab.</p>
-            `;
-            appendMessage('bot-message', successMessage);
         }
         
-        // Event Listeners (FINAL FIX: Attach functions to button IDs)
+        // Event Listeners (Attach functions to button IDs)
         document.getElementById('analyze-button').addEventListener('click', sendQuery);
         document.getElementById('hospital-button').addEventListener('click', findNearestHospital);
         document.getElementById('new-chat-button').addEventListener('click', startNewChat);
