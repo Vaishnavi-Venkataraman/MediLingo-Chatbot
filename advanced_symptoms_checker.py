@@ -40,18 +40,15 @@ X_train_text, X_test_text, y_train_id, y_test_id = train_test_split(
     stratify=df_text['disease_id']
 )
 
-# --- 2. Save Components (CRITICAL STEP) ---
 print("\n2. Saving data splits and encoder...")
 
 try:
-    # Save Data Splits
     X_train_text.to_csv('X_train_text.csv', index=False, header=True)
     X_test_text.to_csv('X_test_text.csv', index=False, header=True)
     np.save('y_train_id.npy', y_train_id.values)
     np.save('y_test_id.npy', y_test_id.values)
     joblib.dump(le, 'le_semantic.pkl')
     
-    # --- Check for successful file creation ---
     if os.path.exists('X_train_text.csv'):
         print("SUCCESS: Data files created. Proceeding to model building.")
     else:
@@ -62,7 +59,6 @@ except Exception as e:
     print(f"FATAL ERROR during file saving: {e}")
     exit()
 
-# --- 3. Semantic Vectorization (Code 4.2) ---
 print("\n--- 3. Semantic Vectorization (Embedding Generation) ---")
 MODEL_NAME = 'all-MiniLM-L6-v2'
 sbert_model = SentenceTransformer(MODEL_NAME)
@@ -72,15 +68,12 @@ X_train_vectors = sbert_model.encode(X_train_text.tolist(), show_progress_bar=Tr
 print("Generating embeddings for Testing data...")
 X_test_vectors = sbert_model.encode(X_test_text.tolist(), show_progress_bar=True)
 
-# --- Save Initial Vectors and SBERT Model ---
 np.save('X_train_vectors.npy', X_train_vectors)
 np.save('X_test_vectors.npy', X_test_vectors)
 joblib.dump(sbert_model, 'sbert_model.pkl')
 
 print("Semantic Vectorization complete. Initial model saved.")
 
-
-# --- 4. Training Semantic SVM Classifier (Baseline) ---
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 
@@ -88,7 +81,6 @@ print("\n--- 4. Training Semantic SVM Classifier ---")
 svm_semantic_model = SVC(kernel='linear', C=1.0, probability=True, random_state=42)
 svm_semantic_model.fit(X_train_vectors, y_train_id)
 
-# Evaluation
 y_pred_semantic = svm_semantic_model.predict(X_test_vectors)
 accuracy_semantic = accuracy_score(y_test_id, y_pred_semantic)
 

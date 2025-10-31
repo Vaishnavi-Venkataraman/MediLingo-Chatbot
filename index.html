@@ -251,23 +251,13 @@
         let lastPredictedDisease = null; 
         let symptomHistory = []; 
         let lastGraphData = null; 
-        
-        // Function to handle Enter key submit (Must be defined globally)
-        function handleEnterKey(e) {
-            if (e.key === 'Enter') {
-                sendQuery();
-                e.preventDefault(); 
-            }
-        }
 
         function startNewChat() {
             // CRITICAL FIX: Reset all state and restore the initial message content
             lastPredictedDisease = null;
             symptomHistory = [];
-            // Use querySelector to get the initial message template cleanly
-            const initialTemplate = document.querySelector('#initial-message-template').outerHTML;
-            // Clear history and restore the greeting template
-            historyDiv.innerHTML = `<div class="bot-message p-4">${initialTemplate}</div>`;
+            const initialContent = document.getElementById('initial-message-template').innerHTML;
+            historyDiv.innerHTML = `<div class="bot-message p-4">${initialContent}</div>`;
             hospitalButton.style.display = 'none';
             lastGraphData = null;
             queryInput.focus();
@@ -431,12 +421,14 @@
             const isSymptomCheck = isSymptomQuery(query);
             
             if (isSymptomCheck) {
+                // CRITICAL FIX: Accumulate symptom history and send the joint query
                 symptomHistory.push(query);
                 finalQuery = symptomHistory.join(', and also ');
-                lastPredictedDisease = null; 
+                lastPredictedDisease = null; // Clear disease memory before diagnosis
             } else {
+                // Follow-up question
                 finalQuery = query;
-                contextDiseaseValue = lastPredictedDisease; 
+                contextDiseaseValue = lastPredictedDisease; // Use the stored disease name
             }
             
             const finalContext = contextDiseaseValue || null;
@@ -489,7 +481,9 @@
         
         // --- GEOLOCATION AND MAPS LOGIC ---
         function findNearestHospital() {
-            const userLocation = prompt("Enter your City or Zip Code to find the nearest hospital:", "Chennai, 600001");
+            // This function is now fully implemented to open the map and report success.
+            
+            const userLocation = prompt("Enter your City or Zip Code to find the nearest hospital:", "Coimbatore, 641025");
             
             if (!userLocation) {
                 return;
@@ -511,7 +505,7 @@
             appendMessage('bot-message', successMessage);
         }
         
-        // Event Listeners (CRITICAL FINAL FIX: Attach functions to button IDs)
+        // Event Listeners (FINAL FIX: Attach functions to button IDs)
         document.getElementById('analyze-button').addEventListener('click', sendQuery);
         document.getElementById('hospital-button').addEventListener('click', findNearestHospital);
         document.getElementById('new-chat-button').addEventListener('click', startNewChat);
