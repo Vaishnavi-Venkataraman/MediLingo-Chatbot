@@ -1,5 +1,3 @@
-# CODE 71.0: FastAPI Backend (FINAL: Multilingual Context Fix)
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -19,11 +17,9 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity 
 
-# --- Configuration & Load Models ---
 app = FastAPI(title="MediLingo AI Chatbot API", version="1.0")
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# --- CORS Middleware ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -33,7 +29,6 @@ app.add_middleware(
 )
 
 try:
-    # Load all core models and components
     SVM_MODEL = joblib.load('svm_semantic_model_final.pkl')
     SBERT_MODEL = joblib.load('sbert_model_final.pkl')
     LE_ENCODER = joblib.load('le_semantic.pkl')
@@ -48,17 +43,12 @@ except FileNotFoundError as e:
     print(f"CRITICAL ERROR: Failed to load models. Detail: {e}")
     exit()
 
-# Global variables
 LANG_HINDI_CODE = "hi_IN"
 LANG_TAMIL_CODE = "ta_IN"
 LANG_ENGLISH_CODE = "en_XX"
 LANG_MAP = {'en': LANG_ENGLISH_CODE, 'hi': LANG_HINDI_CODE, 'ta': LANG_TAMIL_CODE, 
             LANG_ENGLISH_CODE: 'en', LANG_HINDI_CODE: 'hi', LANG_TAMIL_CODE: 'ta'}
 
-
-# --------------------------------------------------------------------------------
-# --- UTILITY FUNCTIONS ---
-# --------------------------------------------------------------------------------
 
 def clean_text(text):
     text = text.lower()
@@ -137,7 +127,6 @@ def retrieve_faq_answer(user_input_en: str, model, embeddings, df_kb, context_di
     else:
         return None, None, best_score
 
-# --- IN-MEMORY GRAPH GENERATION (FIXED FONT) ---
 def generate_and_encode_graph_base64(recognized_symptoms: List[str], predicted_disease: str):
     """Generates the graph image in memory and returns it as a Base64 string."""
     
@@ -149,19 +138,15 @@ def generate_and_encode_graph_base64(recognized_symptoms: List[str], predicted_d
     for symptom in recognized_symptoms:
         subgraph.add_edge(symptom, predicted_disease_node)
 
-    # Use a non-GUI backend for stability
     plt.switch_backend('Agg') 
     fig = plt.figure(figsize=(8, 4)) 
 
-    # --- CRITICAL FIX: Set Font Properties for Multilingual Support ---
-    # This addresses the Devanagari (Hindi) rendering failure by using Unicode fonts.
     plt.rcParams['font.sans-serif'] = ['Nirmala UI', 'Arial Unicode MS', 'DejaVu Sans', 'sans-serif']
     plt.rcParams['font.family'] = 'sans-serif'
     
     try: pos = nx.circular_layout(subgraph) 
     except Exception: pos = nx.shell_layout(subgraph)
     
-    # Map nodes to colors/labels
     node_colors = ['#EF5350' if node == predicted_disease_node else '#42A5F5' for node in subgraph.nodes]
     node_labels = {node: node.replace('_', ' ').title() for node in subgraph.nodes}
     
@@ -177,7 +162,6 @@ def generate_and_encode_graph_base64(recognized_symptoms: List[str], predicted_d
     
     plt.title(f"Causal Links: {predicted_disease}", fontsize=10)
     
-    # Save the figure to an in-memory buffer (BytesIO)
     buffer = io.BytesIO()
     plt.savefig(buffer, format='png', bbox_inches='tight')
     plt.close(fig) 
@@ -187,14 +171,11 @@ def generate_and_encode_graph_base64(recognized_symptoms: List[str], predicted_d
 
     return encoded_string
 
-
-# --- API Data Schemas ---
 class ChatInput(BaseModel):
     query: str
     context_disease: Optional[str] = None
 
 class PredictionOutput(BaseModel):
-    # CRITICAL NEW FIELD: Stores the clean English name for the JS client memory
     raw_primary_disease_en: str 
     primary_disease: str
     primary_confidence: float
@@ -204,8 +185,6 @@ class PredictionOutput(BaseModel):
     causal_graph_base64: Optional[str] = None 
     hospital_link: Optional[str] = None
 
-
-# --- API Endpoint ---
 @app.post("/chat", response_model=PredictionOutput)
 def chat_endpoint(data: ChatInput):
     user_input = data.query
@@ -217,7 +196,6 @@ def chat_endpoint(data: ChatInput):
     else:
         user_input_en = user_input
         
-    # 2. Check for FAQ/Contextual Query
     match_q, match_a, score = retrieve_faq_answer(
         user_input_en, SBERT_MODEL, FAQ_EMBEDDINGS, DF_FAQ, context_disease=context_disease
     )
@@ -234,9 +212,7 @@ def chat_endpoint(data: ChatInput):
             causal_graph_base64=None,
             hospital_link=None
         )
-    
-    # 3. SYMPTOM CHECKER FALLBACK
-    
+        
     cleaned_input = clean_text(user_input_en)
     input_vector = SBERT_MODEL.encode([cleaned_input]).astype(np.float64) 
     probabilities = SVM_MODEL.predict_proba(input_vector)[0]
@@ -250,7 +226,6 @@ def chat_endpoint(data: ChatInput):
     primary_disease_en = top_3[0]['disease'] 
     primary_confidence = top_3[0]['confidence']
     
-    # --- CRITICAL FIX: LOW CONFIDENCE OVERRIDE ---
     if primary_confidence < 0.35:
         if 'urinary_pain' in cleaned_input or 'burning_micturition' in cleaned_input:
             primary_disease_en = "Urinary tract infection"
@@ -259,21 +234,17 @@ def chat_endpoint(data: ChatInput):
             primary_disease_en = "Common Cold"
             primary_confidence = 0.40
             
-    # Get Triage
     triage_score, triage_level, recognized_symptoms = calculate_triage_score_and_tokens(user_input_en)
     
-    # Final Output: Translate primary disease for display
     if src_lang_code != LANG_ENGLISH_CODE:
         primary_disease_output = translate_text(primary_disease_en, LANG_ENGLISH_CODE, src_lang_code)
     else:
         primary_disease_output = primary_disease_en
 
-    # 4. Generate Graph and Hospital Link
     causal_graph_data = generate_and_encode_graph_base64(recognized_symptoms, primary_disease_output)
     
     hospital_link = get_hospital_search_link(src_lang_code) if triage_level == "HIGH_RISK" else None
 
-    # Final Output Structure 
     return PredictionOutput(
         raw_primary_disease_en=primary_disease_en,
         primary_disease=primary_disease_output,

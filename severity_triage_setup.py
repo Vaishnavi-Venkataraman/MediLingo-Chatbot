@@ -28,11 +28,11 @@ MASTER_ALIAS_MAP = {
     'diarrhoea': ['loose_motions', 'diarrhea', 'runs'],
     'cough': ['coughing'],
     'fatigue': ['tiredness', 'exhaustion', 'always_tired'],
-    'joint_pain': ['joints_hurt', 'joint_sore', 'joint_ache', 'sore_joints'],
-    'muscle_pain': ['muscle_soreness', 'muscle_ache', 'body_pain', 'sore_muscles'],
-    'stomach_pain': ['stomach_ache', 'gut_pain', 'belly_ache', 'abdominal_cramps'],
-    'chest_pain': ['heart_pain', 'chest_ache'],
-    'skin_rash': ['rashes', 'skin_eruptions', 'skin_irritation'],
+    'joint pain': ['joints_hurt', 'joint_sore', 'joint_ache', 'sore_joints'],
+    'muscle pain': ['muscle_soreness', 'muscle_ache', 'body_pain', 'sore_muscles'],
+    'stomach pain': ['stomach_ache', 'gut_pain', 'belly_ache', 'abdominal_cramps'],
+    'chest pain': ['heart_pain', 'chest_ache'],
+    'skin rash': ['rashes', 'skin_eruptions', 'skin_irritation'],
     
     # Urinary Symptoms
     'burning_micturition': ['burning_urine', 'painful_urination', 'burning_when_i_pee'],

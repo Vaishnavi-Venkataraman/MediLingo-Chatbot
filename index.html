@@ -9,15 +9,14 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     
     <style>
-        /* Define color variables for easy dynamic styling */
         :root {
-            --primary: #1e88e5; /* Primary Action Blue */
+            --primary: #1e88e5; 
             --primary-dark: #0056b3;
-            --bg-light: #f8f9fa; /* Light Background */
+            --bg-light: #f8f9fa; 
             --text-dark: #212529;
-            --risk-high: #dc3545; /* Critical Red */
-            --risk-moderate: #ffc107; /* Caution Yellow */
-            --risk-low: #28a745; /* Success Green */
+            --risk-high: #dc3545; 
+            --risk-moderate: #ffc107;
+            --risk-low: #28a745;
             --hospital-red: #dc3545;
             --chat-bot-bg: #ffffff;
             --border-light: #dee2e6;
@@ -253,7 +252,6 @@
         let lastGraphData = null; 
 
         function startNewChat() {
-            // CRITICAL FIX: Reset all state and restore the initial message content
             lastPredictedDisease = null;
             symptomHistory = [];
             const initialContent = document.getElementById('initial-message-template').innerHTML;
@@ -417,18 +415,15 @@
             let contextDiseaseValue = null;
             let finalQuery = query;
 
-            // --- CUMULATIVE MEMORY AND CONTEXT MANAGEMENT FIX ---
             const isSymptomCheck = isSymptomQuery(query);
             
             if (isSymptomCheck) {
-                // CRITICAL FIX: Accumulate symptom history and send the joint query
                 symptomHistory.push(query);
                 finalQuery = symptomHistory.join(', and also ');
-                lastPredictedDisease = null; // Clear disease memory before diagnosis
+                lastPredictedDisease = null;
             } else {
-                // Follow-up question
                 finalQuery = query;
-                contextDiseaseValue = lastPredictedDisease; // Use the stored disease name
+                contextDiseaseValue = lastPredictedDisease; 
             }
             
             const finalContext = contextDiseaseValue || null;
