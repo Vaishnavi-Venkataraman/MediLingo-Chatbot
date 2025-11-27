@@ -124,7 +124,6 @@
             border-radius: 5px;
             transition: width 0.5s ease;
         }
-        /* Input/Button Styling Fixes */
         .input-container {
             display: flex;
             gap: 10px;
@@ -297,7 +296,6 @@
                 `;
             }
 
-            // Diagnosis Response
             const primary = data.top_3_predictions[0];
             const primaryConfidence = (primary.confidence * 100).toFixed(1);
 
@@ -325,7 +323,6 @@
                 actionAdvice = '✅ Symptoms indicate a low risk condition. Consider self-care or consult a doctor if symptoms persist.';
             }
 
-            // Hospital Link Injection
             let hospitalLinkHtml = '';
             if (data.triage_level.includes('HIGH')) {
                 hospitalLinkHtml = `
@@ -337,8 +334,7 @@
                     </p>
                 `;
             }
-            
-            // Causal Graph Display
+
             const graphEmbedHtml = data.causal_graph_base64 ? 
                 `<div class="causal-graph-container mt-4 pt-3 border-t border-dashed border-border-light">
                     <h4 class="font-semibold text-sm text-primary-dark">Causal Link Visualization</h4>
@@ -395,7 +391,6 @@
             const query = queryInput.value.trim();
             if (query === "") return;
 
-            // 1. Append User Message
             appendMessage('user-message', query);
             
             queryInput.value = '';
@@ -403,7 +398,6 @@
             hospitalButton.disabled = true;
             queryInput.disabled = true;
 
-            // 2. Append Loading Message
             appendMessage('bot-message', `
                 <p class="text-text-medium flex items-center">
                     <i class="fas fa-spinner fa-pulse mr-2"></i> Analyzing <span id="loading-dots">
@@ -439,7 +433,6 @@
                     }), 
                 });
 
-                // Remove the loading message
                 historyDiv.lastChild.remove();
 
                 if (!response.ok) {
@@ -450,20 +443,15 @@
 
                 const data = await response.json();
                 
-                // 3. UPDATE CONTEXT MEMORY: 
                 if (!data.is_faq) {
-                     // Save the RAW ENGLISH prediction for stable context lookup
                      lastPredictedDisease = data.raw_primary_disease_en;
                 }
                 
-                // 4. Update Global Graph Data
                 lastGraphData = data.causal_graph_base64;
 
-                // 5. Append Bot Response
                 appendMessage('bot-message', renderBotResponse(data, finalQuery));
 
             } catch (error) {
-                // Remove the loading message
                 if (historyDiv.lastChild) historyDiv.lastChild.remove();
                 appendMessage('bot-message', `<p class="text-red-600">❌ Network/Connection Error. Please ensure the backend is running. <br>Details: ${error.message}</p>`);
             } finally {
@@ -474,10 +462,7 @@
             }
         }
         
-        // --- GEOLOCATION AND MAPS LOGIC ---
-        function findNearestHospital() {
-            // This function is now fully implemented to open the map and report success.
-            
+        function findNearestHospital() {            
             const userLocation = prompt("Enter your City or Zip Code to find the nearest hospital:", "Coimbatore, 641025");
             
             if (!userLocation) {
@@ -485,11 +470,8 @@
             }
 
             const encodedLocation = encodeURIComponent("Hospital near " + userLocation);
-            
-            // Use standard Google Search URL for reliable redirect
             const mapsUrl = `https://www.google.com/maps/search/?api=1&query=nearest+hospital&center=$6{encodedLocation}`;
-            
-            // Open the link in a new tab
+
             window.open(mapsUrl, '_blank'); 
 
             const successMessage = `
@@ -499,8 +481,7 @@
             `;
             appendMessage('bot-message', successMessage);
         }
-        
-        // Event Listeners (FINAL FIX: Attach functions to button IDs)
+
         document.getElementById('analyze-button').addEventListener('click', sendQuery);
         document.getElementById('hospital-button').addEventListener('click', findNearestHospital);
         document.getElementById('new-chat-button').addEventListener('click', startNewChat);
@@ -509,7 +490,7 @@
         queryInput.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 sendQuery();
-                e.preventDefault(); // CRITICAL FIX: Prevent default behavior (new line)
+                e.preventDefault();
             }
         });
 

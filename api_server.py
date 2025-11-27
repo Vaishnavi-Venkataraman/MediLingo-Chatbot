@@ -10,12 +10,12 @@ import base64
 import os
 import networkx as nx
 import matplotlib.pyplot as plt
-import io 
-import matplotlib.font_manager as fm 
+import io
+import matplotlib.font_manager as fm
 from typing import List, Dict, Any, Optional
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity 
+from sklearn.metrics.pairwise import cosine_similarity
 
 app = FastAPI(title="MediLingo AI Chatbot API", version="1.0")
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -74,7 +74,6 @@ def translate_text(text, src_lang, tgt_lang):
     return TRANSLATOR_TOKENIZER.batch_decode(generated_tokens, skip_special_tokens=True)[0]
 
 def get_hospital_search_link(language_code):
-    """Returns a placeholder universal Google Maps search URL."""
     return "https://www.google.com/maps/search/nearest+hospital+emergency+room"
 
 
@@ -128,7 +127,6 @@ def retrieve_faq_answer(user_input_en: str, model, embeddings, df_kb, context_di
         return None, None, best_score
 
 def generate_and_encode_graph_base64(recognized_symptoms: List[str], predicted_disease: str):
-    """Generates the graph image in memory and returns it as a Base64 string."""
     
     predicted_disease_node = predicted_disease.strip().lower().replace(' ', '_')
     
@@ -138,8 +136,8 @@ def generate_and_encode_graph_base64(recognized_symptoms: List[str], predicted_d
     for symptom in recognized_symptoms:
         subgraph.add_edge(symptom, predicted_disease_node)
 
-    plt.switch_backend('Agg') 
-    fig = plt.figure(figsize=(8, 4)) 
+    plt.switch_backend('Agg')
+    fig = plt.figure(figsize=(8, 4))
 
     plt.rcParams['font.sans-serif'] = ['Nirmala UI', 'Arial Unicode MS', 'DejaVu Sans', 'sans-serif']
     plt.rcParams['font.family'] = 'sans-serif'
@@ -225,14 +223,6 @@ def chat_endpoint(data: ChatInput):
         
     primary_disease_en = top_3[0]['disease'] 
     primary_confidence = top_3[0]['confidence']
-    
-    if primary_confidence < 0.35:
-        if 'urinary_pain' in cleaned_input or 'burning_micturition' in cleaned_input:
-            primary_disease_en = "Urinary tract infection"
-            primary_confidence = 0.50
-        elif 'throat_pain' in cleaned_input or 'sore_throat' in cleaned_input:
-            primary_disease_en = "Common Cold"
-            primary_confidence = 0.40
             
     triage_score, triage_level, recognized_symptoms = calculate_triage_score_and_tokens(user_input_en)
     
